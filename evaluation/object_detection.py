@@ -7,15 +7,15 @@ class ObjectDetector:
         """Initializes OWL-ViT processor and model."""
         self.processor = OwlViTProcessor.from_pretrained(MODEL_NAME)
         self.model = OwlViTForObjectDetection.from_pretrained(MODEL_NAME).to(DEVICE).eval()
-
+    
     def detect_objects(self, image, text_queries):
-        """Runs object detection and returns detected objects, bounding boxes, and raw scores."""
+        """Runs OWL-ViT object detection and returns detected objects with bounding boxes."""
         inputs = self.processor(images=image, text=[text_queries], return_tensors="pt").to(DEVICE)
 
         with torch.no_grad():
             outputs = self.model(**inputs)
 
-        target_sizes = torch.tensor([image.size[::-1]]).to(DEVICE)
+        target_sizes = torch.tensor([image.size[::-1]]).to(DEVICE)  # (width, height) order
         results = self.processor.post_process_object_detection(outputs, target_sizes=target_sizes, threshold=0.05)
 
         detected_objects = []
@@ -23,11 +23,9 @@ class ObjectDetector:
         scores = []
 
         for score, label, box in zip(results[0]["scores"], results[0]["labels"], results[0]["boxes"]):
-            if score > 0.1:
-                detected_objects.append(text_queries[label])  # Map label index to query text
+            if score > 0.05:  # Confidence threshold
+                detected_objects.append(text_queries[label])  # Map label index to text query
                 bounding_boxes.append(box.tolist())  # Convert tensor to list
                 scores.append(float(score))  # Convert tensor to float
-        
-        # Print raw scores
-        print(f"🔍 Detected Objects (Raw Scores): {scores}")
+
         return detected_objects, bounding_boxes, scores
