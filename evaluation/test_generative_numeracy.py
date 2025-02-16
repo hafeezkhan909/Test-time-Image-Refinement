@@ -9,7 +9,7 @@ with open("data/generative_numeracy/test_numeracy_queries.json", "r") as f:
     test_queries = json.load(f)  # Format: {"0": {"object": "car", "count": 1}}
 
 # Define base path for images
-base_image_path = "data/generative_numeracy/method2/"
+base_image_path = "data/generative_numeracy/t-0_3/"
 
 # Initialize Object Detector
 detector = ObjectDetector()
@@ -51,7 +51,7 @@ for query_id, query_data in test_queries.items():
     total_accuracy += accuracy
 
     # Save visualization
-    save_path = f"data/generative_numeracy/method2/detection_visualization/img_{query_id}_numeracy.png"
+    save_path = f"data/generative_numeracy/t-0_3/detection_visualization/img_{query_id}_numeracy.png"
     save_detection_visualization(image, detected_objects, bounding_boxes, scores, save_path)
 
     # Store results
@@ -80,7 +80,7 @@ overall_accuracy = total_accuracy / total_queries if total_queries > 0 else 0
 results["overall_accuracy"] = overall_accuracy
 
 # Save results to JSON
-with open("data/generative_numeracy/method2/method2_numeracy_results.json", "w") as json_file:
+with open("data/generative_numeracy/t-0_3/t-0_3_numeracy_results.json", "w") as json_file:
     json.dump(results, json_file, indent=4)
 
 print(f"\n📊 **Final Accuracy Across All Images: {overall_accuracy:.2f}%**")

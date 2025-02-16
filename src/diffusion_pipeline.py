@@ -3,9 +3,9 @@ import torch
 from tqdm.auto import tqdm
 from models import load_models
 from image_utils import decode_latents, save_image
-from config import DEVICE, HEIGHT, WIDTH, NUM_INFERENCE_STEPS, GUIDANCE_SCALE, BATCH_SIZE, GENERATOR_SEED
+from config import DEVICE, HEIGHT, WIDTH, NUM_INFERENCE_STEPS, GUIDANCE_SCALE, BATCH_SIZE
 
-def generate_image(prompt, save_intermediate_steps=False):
+def generate_image(prompt, generator_seed, save_intermediate_steps=False):
     """Runs Stable Diffusion pipeline and saves images at different timesteps.
        Also saves the latent state when the timestep equals 25.
     """
@@ -36,7 +36,7 @@ def generate_image(prompt, save_intermediate_steps=False):
     text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
     # Generate initial noise
-    generator = torch.manual_seed(GENERATOR_SEED)
+    generator = torch.manual_seed(generator_seed)  # ✅ Each prompt gets a unique seed
     latents = torch.randn((BATCH_SIZE, unet.in_channels, HEIGHT // 8, WIDTH // 8), generator=generator).to(DEVICE)
 
     # Initialize scheduler
@@ -49,8 +49,8 @@ def generate_image(prompt, save_intermediate_steps=False):
     os.makedirs("outputs/latents", exist_ok=True)
 
     # Select Intermediate Steps (for image saving)
-    save_steps = [NUM_INFERENCE_STEPS // 10, NUM_INFERENCE_STEPS // 4, 
-                  NUM_INFERENCE_STEPS // 2, 3 * NUM_INFERENCE_STEPS // 4]
+    save_steps = [NUM_INFERENCE_STEPS // 10, NUM_INFERENCE_STEPS * 3 // 20, NUM_INFERENCE_STEPS // 4, 
+                  13 * NUM_INFERENCE_STEPS // 20, NUM_INFERENCE_STEPS // 2, 3 * NUM_INFERENCE_STEPS // 4]
 
     # Denoising Loop
     for step, t in enumerate(tqdm(scheduler.timesteps, desc="Denoising")):
@@ -66,28 +66,32 @@ def generate_image(prompt, save_intermediate_steps=False):
         latents = scheduler.step(noise_pred, t, latents).prev_sample
 
         # Save the latent state when the timestep equals 25
-        if step == 15:
-            latent_path = f"outputs/latents/latent_t15_{GENERATOR_SEED}.pt"
+        if step == 10:
+            latent_path = f"outputs/latents/latent_t10_{generator_seed}.pt"
             torch.save(latents, latent_path)
+            print(f"Saved latent state at timestep 10 to {latent_path}")
+        elif step == 15:
+            latent_path = f"outputs/latents/latent_t15_{generator_seed}.pt"
+            # torch.save(latents, latent_path)
             print(f"Saved latent state at timestep 15 to {latent_path}")
         elif step == 25:
-            latent_path = f"outputs/latents/latent_t25_{GENERATOR_SEED}.pt"
+            latent_path = f"outputs/latents/latent_t25_{generator_seed}.pt"
             torch.save(latents, latent_path)
             print(f"Saved latent state at timestep 25 to {latent_path}")
-        elif step == 40:
-            latent_path = f"outputs/latents/latent_t40_{GENERATOR_SEED}.pt"
-            torch.save(latents, latent_path)
-            print(f"Saved latent state at timestep 40 to {latent_path}")
+        # elif step == 40:
+        #     latent_path = f"outputs/latents/latent_t40_{GENERATOR_SEED}.pt"
+        #     torch.save(latents, latent_path)
+        #     print(f"Saved latent state at timestep 40 to {latent_path}")
         elif step == 50:
-            latent_path = f"outputs/latents/latent_t50_{GENERATOR_SEED}.pt"
+            latent_path = f"outputs/latents/latent_t50.pt"
             torch.save(latents, latent_path)
             print(f"Saved latent state at timestep 50 to {latent_path}")
         elif step == 65:
-            latent_path = f"outputs/latents/latent_t65_{GENERATOR_SEED}.pt"
-            torch.save(latents, latent_path)
+            latent_path = f"outputs/latents/latent_t65.pt"
+            # torch.save(latents, latent_path)
             print(f"Saved latent state at timestep 65 to {latent_path}")
         elif step == 75:
-            latent_path = f"outputs/latents/latent_t75_{GENERATOR_SEED}.pt"
+            latent_path = f"outputs/latents/latent_t75.pt"
             torch.save(latents, latent_path)
             print(f"Saved latent state at timestep 75 to {latent_path}")
 
@@ -99,7 +103,8 @@ def generate_image(prompt, save_intermediate_steps=False):
 
     # Save final image
     print(f"Saving final image at Step {step}, Timestep {t}")
+    print(f"The seed used is {generator_seed}.")
     final_image = decode_latents(latents, vae)
     save_image(final_image, "final_image.png", folder="outputs/final")
 
-    return final_image
+    return generator_seed
