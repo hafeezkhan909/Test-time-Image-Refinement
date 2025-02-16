@@ -4,7 +4,7 @@ from models import load_models
 from image_utils import decode_latents, save_image
 from config import DEVICE, HEIGHT, WIDTH, NUM_INFERENCE_STEPS, GUIDANCE_SCALE, BATCH_SIZE
 
-def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermediate_steps=False):
+def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermediate_steps=False, save_steps = {38, 49, 57}):
     """
     Refines an image starting from a latent state (e.g. at t=25) up to the final clean image.
     
@@ -66,7 +66,7 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
     if save_intermediate_steps:
         remaining_steps = len(scheduler.timesteps[start_idx:])
         # For example, save at the middle of the remaining denoising process:
-        save_steps = {25}
+        # save_steps = {22, 43, 64}
     
     # Continue the denoising loop starting from the provided latent state.
     remaining_timesteps = scheduler.timesteps[start_idx:]
@@ -96,7 +96,7 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
 
     # Decode and save the final refined image (corresponds to t=100 or the final timestep)
     final_image = decode_latents(latents, vae)
-    save_image(final_image, "final_refined_image75.png", folder="outputs/refined_final")
+    save_image(final_image, "final_refined_image.png", folder="outputs/refined_final")
 
     return final_image, latents
 
@@ -106,10 +106,10 @@ if __name__ == "__main__":
     # For example, assume that after running your first pipeline you saved the latent at t=25:
     # torch.save(latents, "outputs/latent_t25.pt")
     # init_latents = torch.load("outputs/5_latents/latent_t25_157618.pt")
-    init_latents = torch.load("outputs/5_refined_latents/latent_t75.pt")
+    init_latents = torch.load("outputs/latents/latent_t10_488226.pt")
 
     # Define your refined prompt
-    REFINED_PROMPT = "A breathtaking fantasy landscape where the vibrant aurora borealis streaks vividly across the night sky in swirling waves of emerald green, violet, and electric blue, casting an ethereal glow over the tranquil world below. A herd of majestic reindeer, their thick, glistening fur reflecting the celestial hues, gracefully roams a vast, dew-kissed grassy meadow. Their elegantly branched antlers catch the soft silvery moonlight, creating a mesmerizing interplay of light and shadow. Nearby, a pristine, mirror-like lake stretches into the distance, flawlessly reflecting the dazzling aurora, its smooth surface rippling gently. In the far distance, a towering, snow-capped mountain rises with sharply defined, icy peaks, its slopes bathed in a soft lunar glow. The intricate textures of the reindeer’s fur, the lush grass, and the glacial mountain ridges are rendered in exquisite, ultra-detailed 8K resolution, enhancing the dreamlike atmosphere of this fantasy world."
+    REFINED_PROMPT = "A warm and cozy library with rich, textured wooden bookshelves filled with books. The scene should have soft, focused lighting from a reading lamp, creating a warm glow without harsh shadows. Ensure there are no windows in the room, emphasizing an enclosed, intimate atmosphere. The composition should be balanced and detailed, with the wooden textures and cozy lighting as prominent features."
 
     # Run the refinement process from t=25 to t=100
-    final_image, refined_latents = refine_image(REFINED_PROMPT, init_latents, start_timestep=75, save_intermediate_steps=True)
+    final_image, refined_latents = refine_image(REFINED_PROMPT, init_latents, start_timestep=10, save_intermediate_steps=True)
