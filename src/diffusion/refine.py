@@ -1,10 +1,11 @@
+import os
 import torch
 from tqdm.auto import tqdm
 from diffusion.models import load_models
 from diffusion.image_utils import decode_latents, save_image
 from diffusion.config import DEVICE, HEIGHT, WIDTH, NUM_INFERENCE_STEPS, GUIDANCE_SCALE, BATCH_SIZE
 
-def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermediate_steps=False, save_steps = {38, 49, 57}):
+def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermediate_steps=False, save_steps = {38, 49, 57}, output_dir=None, prefix=""):
     """
     Refines an image starting from a latent state (e.g. at t=25) up to the final clean image.
     
@@ -13,6 +14,9 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
         init_latents (torch.Tensor): The latent state from a previous run (e.g. saved at t=25).
         start_timestep (int): The timestep corresponding to the provided latent (default: 25).
         save_intermediate_steps (bool): Whether to save intermediate outputs during refinement.
+        save_steps (set): Steps at which to save intermediate images.
+        output_dir (str): Directory to save refined images.
+        prefix (str): Prefix for filenames to avoid overwriting.
     
     Returns:
         final_image: The final refined image (after decoding).
@@ -20,6 +24,9 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
     """
     # Load all required models
     vae, tokenizer, text_encoder, unet, scheduler = load_models(DEVICE)
+
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
 
     # Tokenize the refined prompt
     text_input = tokenizer(
@@ -67,7 +74,12 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
         remaining_steps = len(scheduler.timesteps[start_idx:])
         # For example, save at the middle of the remaining denoising process:
         # save_steps = {22, 43, 64}
-    
+
+    save_step_mapping = {
+    14: 15, 23: 25, 45: 50, 59: 65, 68: 75,  # Mapping for {14, 23, 45, 59, 68} → {15, 25, 50, 75}
+    38: 50, 49: 65, 57: 75  # Mapping for {38, 49, 57} → {50, 65, 75}
+    }
+
     # Continue the denoising loop starting from the provided latent state.
     remaining_timesteps = scheduler.timesteps[start_idx:]
     for step, t in enumerate(tqdm(remaining_timesteps, desc="Refining")):
@@ -88,15 +100,21 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
 
         # Optionally save intermediate refined images
         if save_intermediate_steps and step in save_steps:
-            print(f"Saving intermediate refined image at step {step} (timestep {t})")
+            
+            mapped_step = save_step_mapping.get(step, step)  # Convert old step to new step for saving
+            print(f"Saving intermediate refined image at step {step} (saving as {mapped_step}) (timestep {t})")
             intermediate_image = decode_latents(latents, vae)
             # latent_path = f"outputs/5_refined_latents/latent_t75.pt"
             # torch.save(latents, latent_path)
-            save_image(intermediate_image, f"refined_step_{step}.png", folder="outputs/refined_intermediate")
+            image_path = os.path.join(output_dir, f"{prefix}step_{mapped_step}.png")  # Save with new step name
+            save_image(intermediate_image, image_path)
+            # save_image(intermediate_image, f"refined_step_{step}.png", folder="outputs/refined_intermediate")
 
     # Decode and save the final refined image (corresponds to t=100 or the final timestep)
     final_image = decode_latents(latents, vae)
-    save_image(final_image, "final_refined_image.png", folder="outputs/refined_final")
+    final_image_path = os.path.join(output_dir, f"final_{prefix}.png")  # Add prefix
+    save_image(final_image, final_image_path)
+    # save_image(final_image, "final_refined_image.png", folder="outputs/refined_final")
 
     return final_image, latents
 

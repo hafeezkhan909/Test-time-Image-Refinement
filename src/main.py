@@ -103,7 +103,7 @@ for idx, prompt in enumerate(prompts):
     if decision_25 == "True":
         print(f"✅ Early stopping at 1st iter: Image matches the prompt.")
         move_files({os.path.join(prompt_output_dir, "final_image.png"): os.path.join(prompt_output_dir, "ES1_final_image.png")})
-        # continue
+        # continue # uncomment to stop when image-prompt correctness is True
 
     if refined_prompt_25 == "None":
         with open(os.path.join(prompt_output_dir, "dummy_25.txt"), "w") as f:
@@ -112,15 +112,15 @@ for idx, prompt in enumerate(prompts):
     print(f"✅ Refining further: Refined Prompt for Step 25: {refined_prompt_25}")
 
     if 25 in latents_dict:
-        _, saved_latents_25 = refine_image(refined_prompt_25, latents_dict[25], start_timestep=25, save_intermediate_steps=True, save_steps={38, 49, 57})
-
-    # Move refined images
-    move_files({
-        "outputs/refined_intermediate/refined_step_38.png": os.path.join(prompt_output_dir, "refined_25_step_50.png"),
-        "outputs/refined_intermediate/refined_step_49.png": os.path.join(prompt_output_dir, "refined_25_step_65.png"),
-        "outputs/refined_intermediate/refined_step_57.png": os.path.join(prompt_output_dir, "refined_25_step_75.png"),
-        "outputs/refined_final/final_refined_image.png": os.path.join(prompt_output_dir, "final_refined_25_image.png")
-    })
+        _, saved_latents_25 = refine_image(
+            refined_prompt_25, 
+            latents_dict[25], 
+            start_timestep=25, 
+            save_intermediate_steps=True, 
+            save_steps={38, 49, 57},
+            output_dir=prompt_output_dir,  # Pass the output directory
+            prefix="refined_25_"  # Add prefix for the first refinement
+            )
 
     # ----------------------- #
     # 🔹 Step 3: Second Refinement (Step 10 → Step 100)
@@ -135,27 +135,25 @@ for idx, prompt in enumerate(prompts):
 
     if decision_10 == "True":
         print(f"✅ Early stopping at 2nd iter: Image matches the prompt.")
-        move_files({os.path.join(prompt_output_dir, "final_refined_25_image.png"): os.path.join(prompt_output_dir, "ES2_final_image.png")})
-        # continue
+        move_files({os.path.join(prompt_output_dir, "final_refined_25_.png"): os.path.join(prompt_output_dir, "ES2_final_image.png")})
+        # continue # uncomment to stop when image-prompt correctness is True
 
     if refined_prompt_10 == "None":
         with open(os.path.join(prompt_output_dir, "dummy_10.txt"), "w") as f:
             f.write("ES2_final_image.png")  # Write the content inside the file
 
     print(f"✅ Refining further: Refined Prompt for Step 10: {refined_prompt_10}")
-    # init_latents_10 = torch.load(latent_paths[10])
+    
     if 10 in latents_dict:
-        _, saved_latents_10 = refine_image(refined_prompt_10, latents_dict[10], start_timestep=10, save_intermediate_steps=True, save_steps={14, 23, 45, 59, 68})
-
-    # Move refined images
-    move_files({
-        "outputs/refined_intermediate/refined_step_14.png": os.path.join(prompt_output_dir, "refined_10_step_15.png"),
-        "outputs/refined_intermediate/refined_step_23.png": os.path.join(prompt_output_dir, "refined_10_step_25.png"),
-        "outputs/refined_intermediate/refined_step_45.png": os.path.join(prompt_output_dir, "refined_10_step_50.png"),
-        "outputs/refined_intermediate/refined_step_59.png": os.path.join(prompt_output_dir, "refined_10_step_65.png"),
-        "outputs/refined_intermediate/refined_step_68.png": os.path.join(prompt_output_dir, "refined_10_step_75.png"),
-        "outputs/refined_final/final_refined_image.png": os.path.join(prompt_output_dir, "final_refined_10_image.png")
-    })
+        _, saved_latents_10 = refine_image(
+            refined_prompt_10, 
+            latents_dict[10], 
+            start_timestep=10, 
+            save_intermediate_steps=True, 
+            save_steps={14, 23, 45, 59, 68},
+            output_dir=prompt_output_dir,  # Pass the output directory
+            prefix="refined_10_"  # Add prefix for the second refinement
+            )
 
     # ----------------------- #
     # 🔹 Step 4: Final Generation with Latest Refined Prompt
@@ -170,8 +168,8 @@ for idx, prompt in enumerate(prompts):
 
     if decision_final == "True":
         print(f"✅ Final image is satisfactory. No further refinement needed.")
-        move_files({os.path.join(prompt_output_dir, "final_refined_10_image.png"): os.path.join(prompt_output_dir, "ES3_final_image.png")})
-        # continue
+        move_files({os.path.join(prompt_output_dir, "final_refined_10_.png"): os.path.join(prompt_output_dir, "ES3_final_image.png")})
+        # continue # uncomment to stop when image-prompt correctness is True
 
     if refined_prompt_final == "None":
         with open(os.path.join(prompt_output_dir, "dummy_final.txt"), "w") as f:
