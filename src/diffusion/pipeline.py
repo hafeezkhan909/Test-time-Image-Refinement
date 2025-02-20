@@ -46,10 +46,6 @@ def generate_image(prompt, generator_seed, save_intermediate_steps=False, output
     scheduler.set_timesteps(NUM_INFERENCE_STEPS)
     latents = latents * scheduler.init_noise_sigma  # Scale latents
     latents_dict = {}  # Store intermediate latents instead of saving them to disk
-    # Ensure output directories exist
-    os.makedirs("outputs/intermediate", exist_ok=True)
-    os.makedirs("outputs/final", exist_ok=True)
-    os.makedirs("outputs/latents", exist_ok=True)
 
     # Select Intermediate Steps (for image saving)
     save_steps = [NUM_INFERENCE_STEPS // 10, NUM_INFERENCE_STEPS * 3 // 20, NUM_INFERENCE_STEPS // 4, 
