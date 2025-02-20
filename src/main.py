@@ -1,10 +1,9 @@
-# src/main.py
 import os
 import json
 import torch
 import argparse
 from diffusion.pipeline import generate_image
-from qwen_integration import get_refined_prompt
+from q_test import get_refined_prompt
 from diffusion.refine import refine_image
 import random
 
@@ -72,11 +71,13 @@ def process_tag(tag, prompts, output_dir, model_version):
     tag_output_dir = os.path.join(output_dir, tag)
     os.makedirs(tag_output_dir, exist_ok=True)
 
-    for idx, prompt in enumerate(prompts):
-        print(f"\n🚀 Processing Prompt {idx+1}/{len(prompts)} for tag {tag}:\n{prompt}")
+    for prompt_data in prompts:
+        prompt = prompt_data["prompt"]
+        line_number = prompt_data["line_number"]  # Get the line number
+        print(f"\n🚀 Processing Prompt {line_number} for tag {tag}:\n{prompt}")
 
-        # Create unique prompt-specific folder
-        prompt_id = f"prompt_{idx+1:03d}"
+        # Create unique prompt-specific folder using the line number
+        prompt_id = f"prompt_{line_number:03d}"  # Use line number for folder name
         prompt_output_dir = os.path.join(tag_output_dir, prompt_id)
         os.makedirs(prompt_output_dir, exist_ok=True)
 
@@ -100,7 +101,7 @@ def process_tag(tag, prompts, output_dir, model_version):
         # Ensure required files exist
         if 10 not in latents_dict or not os.path.exists(os.path.join(prompt_output_dir, "step_75.png")):
             print(f"❌ Skipping {prompt_id}, missing required latent/image files.")
-            continue
+            # continue
 
         # ----------------------- #
         # 🔹 Step 2: First Refinement (Step 25 → Step 100)
