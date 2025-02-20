@@ -10,7 +10,5 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # Create necessary directories
-mkdir -p scripts/extract
-mkdir -p scripts/post_process
 mkdir -p generated_images
 mkdir -p new_outputs
