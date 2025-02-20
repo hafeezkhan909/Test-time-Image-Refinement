@@ -1,25 +1,202 @@
-from diffusion_pipeline import generate_image
+import os
+import json
+import torch
+from diffusion.pipeline import generate_image
+from qwen_integration import get_refined_prompt
+from diffusion.refine import refine_image
 import random
 
-# Define prompt
-PROMPT = "a photo of an orange"
+# ======================== #
+# 🔹 Utility Functions
+# ======================== #
 
-# Run image generation
-generate_image(PROMPT, generator_seed=random.randint(0, 1000000), save_intermediate_steps=True)
-# random.randint(0, 1000000)
-# 0	"A realistic photo of a scene with a black and white panda and green bamboos."
-# 1	"A realistic photo of a scene with a black horse and white fence."
-# 2	"A realistic photo of a scene with a blue bird and yellow flower."
-# 3	"A realistic photo of a scene with a blue chair and red table."
-# 4	"A realistic photo of a scene with a gray curtain bird and purple sofa."
-# 5	"A realistic photo of a scene with a gray elephant and brown tree."
-# 6	"A realistic photo of a scene with a orange basketball and purple water bottle."
-# 7	"A realistic photo of a scene with a orange book and blue pen."
-# 8	"A realistic photo of a scene with a orange cat and blue ball."
-# 9	"A realistic photo of a scene with a orange cat and red velvet sofa."
-# 10	"A realistic photo of a scene with a pink rose and yellow butterfly."
-# 11	"A realistic photo of a scene with a silver car and red stop sign"
-# 12	"A realistic photo of a scene with a white rabbit and green leaf."
-# 13	"A realistic photo of a scene with a white sheep and gray rock."
-# 14	"A realistic photo of a scene with a white swan and dark blue lake."
-# 15	"A realistic photo of a scene with a brown teddy and black hat."
+def load_prompts(file_path):
+    """Loads prompts from JSON or text file."""
+    if file_path.endswith(".json"):
+        with open(file_path, "r") as f:
+            data = json.load(f)
+            return data["prompts"]
+    elif file_path.endswith(".txt"):
+        with open(file_path, "r") as f:
+            return [line.strip() for line in f.readlines()]
+    else:
+        raise ValueError("Unsupported file format. Use .json or .txt")
+
+def parse_qwen_output(full_output):
+    """Parses Qwen output to extract decision (True/False) and refined prompt."""
+    decision = None
+    refined_prompt = None
+
+    for line in full_output.split("\n"):
+        if line.startswith("DECISION:"):
+            decision = line.replace("DECISION:", "").strip().strip('"')
+        elif line.startswith("REFINED PROMPT:"):
+            refined_prompt = line.replace("REFINED PROMPT:", "").strip().strip('"')
+    # Ensure refined_prompt is valid; default to original prompt if missing
+    if refined_prompt is None:
+        refined_prompt = "None"
+    return decision, refined_prompt
+
+def move_files(file_map):
+    """Moves files from source to destination paths."""
+    for src, dest in file_map.items():
+        if os.path.exists(src):
+            os.rename(src, dest)
+
+# ======================== #
+# 🔹 Configuration
+# ======================== #
+
+PROMPTS_FILE = "filtered_prompts.json"  # Use "prompts.txt" if using text format
+OUTPUT_DIR = "./new_outputs/batch_results_test"
+
+# Ensure output directories exist
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Load prompts
+prompts = load_prompts(PROMPTS_FILE)
+
+# ======================== #
+# 🔹 Processing Pipeline with Early Stopping
+# ======================== #
+
+for idx, prompt in enumerate(prompts):
+    print(f"\n🚀 Processing Prompt {idx+1}/{len(prompts)}:\n{prompt}")
+
+    # Create unique prompt-specific folder
+    prompt_id = f"prompt_{idx+1:03d}"
+    prompt_output_dir = os.path.join(OUTPUT_DIR, prompt_id)
+    os.makedirs(prompt_output_dir, exist_ok=True)
+
+    # ----------------------- #
+    # 🔹 Step 1: Initial Image Generation (Step 0 → Step 100)
+    # ----------------------- #
+    generator_seed_1 = random.randint(0, 1000000)
+    final_image, generator_seed_1, latents_dict = generate_image(prompt, generator_seed=generator_seed_1, save_intermediate_steps=True)
+
+    image_paths = {
+        10: "outputs/intermediate/step_10.png",
+        15: "outputs/intermediate/step_15.png",
+        25: "outputs/intermediate/step_25.png",
+        50: "outputs/intermediate/step_50.png",
+        65: "outputs/intermediate/step_65.png",
+        75: "outputs/intermediate/step_75.png",
+        "final": "outputs/final/final_image.png"
+    }
+
+    # Ensure required files exist
+    if 10 not in latents_dict or not os.path.exists(image_paths[75]):
+        print(f"❌ Skipping {prompt_id}, missing required latent/image files.")
+        continue
+
+    # Move initial latents & images to prompt-specific folder
+    move_files({path: os.path.join(prompt_output_dir, os.path.basename(path)) for path in image_paths.values()})
+
+    # ----------------------- #
+    # 🔹 Step 2: First Refinement (Step 25 → Step 100)
+    # ----------------------- #
+    full_output_25 = get_refined_prompt(prompt, os.path.join(prompt_output_dir, "step_75.png"))
+    decision_25, refined_prompt_25 = parse_qwen_output(full_output_25)
+
+    # Save Qwen output
+    refined_prompt_25_file = os.path.join(prompt_output_dir, "refined_prompt_25.txt")
+    with open(refined_prompt_25_file, "w") as f:
+        f.write(full_output_25)
+
+    if decision_25 == "True":
+        print(f"✅ Early stopping at 1st iter: Image matches the prompt.")
+        move_files({os.path.join(prompt_output_dir, "final_image.png"): os.path.join(prompt_output_dir, "ES1_final_image.png")})
+        # continue
+
+    if refined_prompt_25 == "None":
+        with open(os.path.join(prompt_output_dir, "dummy_25.txt"), "w") as f:
+            f.write("ES1_final_image.png")  # Write the content inside the file
+        # print(f"❌ Skipping {prompt_id}, Qwen did not return a valid refined prompt.")
+        # continue
+
+    print(f"✅ Refining further: Refined Prompt for Step 25: {refined_prompt_25}")
+    if 25 in latents_dict:
+        _, saved_latents_25 = refine_image(refined_prompt_25, latents_dict[25], start_timestep=25, save_intermediate_steps=True, save_steps={38, 49, 57})
+
+    # Move refined images
+    move_files({
+        "outputs/refined_intermediate/refined_step_38.png": os.path.join(prompt_output_dir, "refined_25_step_50.png"),
+        "outputs/refined_intermediate/refined_step_49.png": os.path.join(prompt_output_dir, "refined_25_step_65.png"),
+        "outputs/refined_intermediate/refined_step_57.png": os.path.join(prompt_output_dir, "refined_25_step_75.png"),
+        "outputs/refined_final/final_refined_image.png": os.path.join(prompt_output_dir, "final_refined_25_image.png")
+    })
+
+    # ----------------------- #
+    # 🔹 Step 3: Second Refinement (Step 10 → Step 100)
+    # ----------------------- #
+    refined_25_step_75_image = os.path.join(prompt_output_dir, "refined_25_step_75.png")
+    full_output_10 = get_refined_prompt(prompt, refined_25_step_75_image)
+    decision_10, refined_prompt_10 = parse_qwen_output(full_output_10)
+
+    refined_prompt_10_file = os.path.join(prompt_output_dir, "refined_prompt_10.txt")
+    with open(refined_prompt_10_file, "w") as f:
+        f.write(full_output_10)
+
+    if decision_10 == "True":
+        print(f"✅ Early stopping at 2nd iter: Image matches the prompt.")
+        move_files({os.path.join(prompt_output_dir, "final_refined_25_image.png"): os.path.join(prompt_output_dir, "ES2_final_image.png")})
+        # continue
+
+    if refined_prompt_10 == "None":
+        with open(os.path.join(prompt_output_dir, "dummy_10.txt"), "w") as f:
+            f.write("ES2_final_image.png")  # Write the content inside the file
+        # print(f"❌ Skipping {prompt_id}, Qwen did not return a valid refined prompt.")
+        # continue
+
+    print(f"✅ Refining further: Refined Prompt for Step 10: {refined_prompt_10}")
+
+    if 10 in latents_dict:
+        _, saved_latents_10 = refine_image(refined_prompt_10, latents_dict[10], start_timestep=10, save_intermediate_steps=True, save_steps={14, 23, 45, 59, 68})
+
+    # Move refined images
+    move_files({
+        "outputs/refined_intermediate/refined_step_14.png": os.path.join(prompt_output_dir, "refined_10_step_15.png"),
+        "outputs/refined_intermediate/refined_step_23.png": os.path.join(prompt_output_dir, "refined_10_step_25.png"),
+        "outputs/refined_intermediate/refined_step_45.png": os.path.join(prompt_output_dir, "refined_10_step_50.png"),
+        "outputs/refined_intermediate/refined_step_59.png": os.path.join(prompt_output_dir, "refined_10_step_65.png"),
+        "outputs/refined_intermediate/refined_step_68.png": os.path.join(prompt_output_dir, "refined_10_step_75.png"),
+        "outputs/refined_final/final_refined_image.png": os.path.join(prompt_output_dir, "final_refined_10_image.png")
+    })
+
+    # ----------------------- #
+    # 🔹 Step 4: Final Generation with Latest Refined Prompt
+    # ----------------------- #
+    refined_10_step_75_image = os.path.join(prompt_output_dir, "refined_10_step_75.png")
+    full_output_final = get_refined_prompt(prompt, refined_10_step_75_image)
+    decision_final, refined_prompt_final = parse_qwen_output(full_output_final)
+
+    refined_prompt_final_file = os.path.join(prompt_output_dir, "refined_prompt_final.txt")
+    with open(refined_prompt_final_file, "w") as f:
+        f.write(full_output_final)
+
+    if decision_final == "True":
+        print(f"✅ Final image is satisfactory. No further refinement needed.")
+        move_files({os.path.join(prompt_output_dir, "final_refined_10_image.png"): os.path.join(prompt_output_dir, "ES3_final_image.png")})
+        # continue
+
+    if refined_prompt_final == "None":
+        with open(os.path.join(prompt_output_dir, "dummy_final.txt"), "w") as f:
+            f.write("ES3_final_image.png")  # Write the content inside the file
+        # print(f"❌ Skipping {prompt_id}, Qwen did not return a valid refined prompt.")
+        # continue
+
+    print(f"✅ Generating final image with refined prompt: {refined_prompt_final}")
+    generator_seed_2 = random.randint(0, 1000000)
+    generate_image(refined_prompt_final, generator_seed=generator_seed_2, save_intermediate_steps=True)
+    move_files({
+        "outputs/intermediate/step_10.png": os.path.join(prompt_output_dir, "final_step_10.png"),
+        "outputs/intermediate/step_15.png": os.path.join(prompt_output_dir, "final_step_15.png"),
+        "outputs/intermediate/step_25.png": os.path.join(prompt_output_dir, "final_step_25.png"),
+        "outputs/intermediate/step_50.png": os.path.join(prompt_output_dir, "final_step_50.png"),
+        "outputs/intermediate/step_65.png": os.path.join(prompt_output_dir, "final_step_65.png"),
+        "outputs/intermediate/step_75.png": os.path.join(prompt_output_dir, "final_step_75.png")
+    })
+    move_files({"outputs/final/final_image.png": os.path.join(prompt_output_dir, "final_final_image.png")})
+    print(f"🎉 Completed {prompt_id}! Results saved in {prompt_output_dir}")
+
+print("\n✅ Batch Processing Complete!")
