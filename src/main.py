@@ -48,7 +48,7 @@ def move_files(file_map):
 # ======================== #
 
 PROMPTS_FILE = "filtered_prompts.json"  # Use "prompts.txt" if using text format
-OUTPUT_DIR = "./new_outputs/batch_results_test"
+OUTPUT_DIR = "new_outputs/batch_results_test"
 
 # Ensure output directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -72,25 +72,22 @@ for idx, prompt in enumerate(prompts):
     # 🔹 Step 1: Initial Image Generation (Step 0 → Step 100)
     # ----------------------- #
     generator_seed_1 = random.randint(0, 1000000)
-    final_image, generator_seed_1, latents_dict = generate_image(prompt, generator_seed=generator_seed_1, save_intermediate_steps=True)
-
-    image_paths = {
-        10: "outputs/intermediate/step_10.png",
-        15: "outputs/intermediate/step_15.png",
-        25: "outputs/intermediate/step_25.png",
-        50: "outputs/intermediate/step_50.png",
-        65: "outputs/intermediate/step_65.png",
-        75: "outputs/intermediate/step_75.png",
-        "final": "outputs/final/final_image.png"
-    }
+    generator_seed_1, latents_dict = generate_image(
+        prompt, 
+        generator_seed=generator_seed_1, 
+        save_intermediate_steps=True,
+        output_dir=prompt_output_dir  # Pass the output directory
+        )
+    
+    # Append the generator seed to the prompt-specific seed file
+    seed_file = os.path.join(prompt_output_dir, "seed.txt")
+    with open(seed_file, "a") as f:  # 'a' mode ensures appending
+        f.write(f"{generator_seed_1}\n")
 
     # Ensure required files exist
-    if 10 not in latents_dict or not os.path.exists(image_paths[75]):
+    if 10 not in latents_dict or not os.path.exists(os.path.join(prompt_output_dir, "step_75.png")):
         print(f"❌ Skipping {prompt_id}, missing required latent/image files.")
         continue
-
-    # Move initial latents & images to prompt-specific folder
-    move_files({path: os.path.join(prompt_output_dir, os.path.basename(path)) for path in image_paths.values()})
 
     # ----------------------- #
     # 🔹 Step 2: First Refinement (Step 25 → Step 100)
@@ -111,10 +108,9 @@ for idx, prompt in enumerate(prompts):
     if refined_prompt_25 == "None":
         with open(os.path.join(prompt_output_dir, "dummy_25.txt"), "w") as f:
             f.write("ES1_final_image.png")  # Write the content inside the file
-        # print(f"❌ Skipping {prompt_id}, Qwen did not return a valid refined prompt.")
-        # continue
 
     print(f"✅ Refining further: Refined Prompt for Step 25: {refined_prompt_25}")
+
     if 25 in latents_dict:
         _, saved_latents_25 = refine_image(refined_prompt_25, latents_dict[25], start_timestep=25, save_intermediate_steps=True, save_steps={38, 49, 57})
 
@@ -145,11 +141,9 @@ for idx, prompt in enumerate(prompts):
     if refined_prompt_10 == "None":
         with open(os.path.join(prompt_output_dir, "dummy_10.txt"), "w") as f:
             f.write("ES2_final_image.png")  # Write the content inside the file
-        # print(f"❌ Skipping {prompt_id}, Qwen did not return a valid refined prompt.")
-        # continue
 
     print(f"✅ Refining further: Refined Prompt for Step 10: {refined_prompt_10}")
-
+    # init_latents_10 = torch.load(latent_paths[10])
     if 10 in latents_dict:
         _, saved_latents_10 = refine_image(refined_prompt_10, latents_dict[10], start_timestep=10, save_intermediate_steps=True, save_steps={14, 23, 45, 59, 68})
 
@@ -182,20 +176,21 @@ for idx, prompt in enumerate(prompts):
     if refined_prompt_final == "None":
         with open(os.path.join(prompt_output_dir, "dummy_final.txt"), "w") as f:
             f.write("ES3_final_image.png")  # Write the content inside the file
-        # print(f"❌ Skipping {prompt_id}, Qwen did not return a valid refined prompt.")
-        # continue
 
     print(f"✅ Generating final image with refined prompt: {refined_prompt_final}")
     generator_seed_2 = random.randint(0, 1000000)
-    generate_image(refined_prompt_final, generator_seed=generator_seed_2, save_intermediate_steps=True)
-    move_files({
-        "outputs/intermediate/step_10.png": os.path.join(prompt_output_dir, "final_step_10.png"),
-        "outputs/intermediate/step_15.png": os.path.join(prompt_output_dir, "final_step_15.png"),
-        "outputs/intermediate/step_25.png": os.path.join(prompt_output_dir, "final_step_25.png"),
-        "outputs/intermediate/step_50.png": os.path.join(prompt_output_dir, "final_step_50.png"),
-        "outputs/intermediate/step_65.png": os.path.join(prompt_output_dir, "final_step_65.png"),
-        "outputs/intermediate/step_75.png": os.path.join(prompt_output_dir, "final_step_75.png")
-    })
+    generate_image(
+        refined_prompt_final, 
+        generator_seed=generator_seed_2, 
+        save_intermediate_steps=True,
+        output_dir=prompt_output_dir,
+        prefix="final_"  # Add prefix for the second call
+        )
+
+    # Append the second generator seed to the same seed file
+    with open(seed_file, "a") as f:
+        f.write(f"{generator_seed_2}\n")
+
     move_files({"outputs/final/final_image.png": os.path.join(prompt_output_dir, "final_final_image.png")})
     print(f"🎉 Completed {prompt_id}! Results saved in {prompt_output_dir}")
 
