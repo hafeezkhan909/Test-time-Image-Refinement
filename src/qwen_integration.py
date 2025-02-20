@@ -37,75 +37,96 @@ def get_refined_prompt(original_prompt, latent_image_path="outputs/intermediate/
             "content": [
                 {"type": "image", "image": f"file://{latent_image_path}"},
                 {"type": "text", "text": f""" 
-You are an **Image Refinement Assistant**, tasked with improving an image generation prompt based on mid-process observations in a diffusion model.
-
-### **Context:**  
-- We are at **step 75 out of 100** in the diffusion process.  
-- At this point, **75% of noise has been removed**, and the latent image is partially formed.  
-- The goal is to refine the **original user prompt** so that the final image at step 100 is better aligned with the user’s intent.  
-
----
+### Evaluation Task:
+You are an **Image Refinement Assistant**. Your job is to check for **image-prompt correctness** and refine the prompt ONLY. 
 
 ### **Given Inputs:**  
 1. **Original User Prompt:**  
    - {original_prompt}  
 
-2. **Look at the image which is a Latent Image at Step 75:**  
-   - <You have to Describe what the partially generated image looks like>  
-   - <List any specific issues, inconsistencies, or missing details>  
-   - (e.g., “The colors are too muted,” “The subject is off-center,” “We see extra artifacts,” “We want more vibrant lighting,” “We only see one cat instead of two,” etc.)  
+2. **Look at what is within the latent image:**  
+   - <You have to Describe what the generated image looks like>  
+   - <List any specific issues, inconsistencies, or missing details with respect to the {original_prompt}>   
+
+- **Do not check for image quality (e.g., sharpness, noise, lighting artifacts).**  
+- **Ignore visual noise or distortions during evaluation.**  
+- **Only assess whether the image correctly represents the original prompt.**   
 
 ---
-
-### **Your Task:**  
-1. **Analyze** the original prompt and compare it with the observations of the latent image.  
-2. **Identify** discrepancies, missing elements, or visual artifacts that need correction.  
-3. **Refine** the original prompt while staying true to the user’s intent. The refined prompt should:  
-   - Maintain **scene and subject consistency** but clarify ambiguous details.  
-   - Add **style, composition, or color guidance** if necessary.  
-   - Optionally include **negative prompt terms** to remove unwanted elements or distortions.  
-
 ### **Example 1**  
 
 #### **Original User Prompt:**  
 *"A fluffy gray rabbit with long ears wearing a tiny blue scarf."*  
 
-Analysis of Latent Image at Step 75:
+**Analysis of Latent Image at Step 75:**
 - Scarf Issue: The tiny blue scarf is not clearly visible or might be missing entirely.
 - Fur Detail: The rabbit's fluffy fur is prominent, but it lacks clarity and fine detail, appearing overly textured or noisy.
 - Background: The backdrop is a plain blue-gray color with minimal variation, which feels flat and unengaging.
 - Rabbit Clarity: The rabbit’s form is discernible but slightly distorted, especially around the ears and face.
 
-#### **Refined Prompt:**  
-*"A highly detailed and fluffy gray rabbit with long, upright ears wearing a tiny, vibrant blue scarf wrapped around its neck. The rabbit should have soft, realistic fur texture and clear, expressive facial features. The background should be a softly blurred gradient of blue and gray tones, creating a serene atmosphere that highlights the rabbit as the focal point."*  
+DECISION: "False"  
+REFINED PROMPT: *"A highly detailed and fluffy gray rabbit with long, upright ears wearing a tiny, vibrant blue scarf wrapped around its neck. The rabbit should have soft, realistic fur texture and clear, expressive facial features. The background should be a softly blurred gradient of blue and gray tones, creating a serene atmosphere that highlights the rabbit as the focal point."*              
+
+---
 
 ### **Example 2**  
 
 #### **Original User Prompt:**  
 *"An angry white dog next to a cute orange cat on a grassy hill at sunset."*  
 
+**Analysis of Latent Image at Step 75:**
 - The "angry white dog" is faintly discernible but lacks clear definition or features. It appears to blend into the background.
 - The "cute orange cat" is indistinct, with no visible form or features, and might not be present at all.
 - The grassy hill is visible but lacks texture and detail.
 - The sunset lighting is absent, and the colors seem scattered without a clear gradient or sunset tones.
 - Overall, the image lacks clarity, structure, and the contrast needed to align with the original prompt.
 
-#### **Refined Prompt:**  
-*"An angry white dog with sharp features, standing next to a cute orange cat with large, expressive eyes on a textured grassy hill. The scene is illuminated by a vibrant sunset, with warm orange and pink hues filling the sky. The hill should have visible blades of grass, and the subjects should be sharply detailed with realistic textures."*  
+DECISION: "False"
+REFINED PROMPT: *"An angry white dog with sharp features, standing next to a cute orange cat with large, expressive eyes on a textured grassy hill. The scene is illuminated by a vibrant sunset, with warm orange and pink hues filling the sky. The hill should have visible blades of grass, and the subjects should be sharply detailed with realistic textures."*  
 ---
 
-### **Output Format:**  
+### **Example 3:**
+
+#### **Original User Prompt:**  
+*"A photo of three giraffes."*  
+
+**Analysis of Latent Image at Step 75:**  
+- **Correct Object Count**: Three giraffes are visible in the frame.  
+- **Giraffe Proportions**: All three giraffes appear natural in size and shape.  
+ 
+DECISION: "True" 
+REFINED PROMPT: *"A natural photo of three giraffes standing in an open grassland. The giraffes should be clearly visible with long necks and distinctive fur patterns. They should be positioned naturally, ensuring all three are fully within the frame and distinguishable from each other. The background should be soft and unobtrusive, keeping the focus on the giraffes."*  
+
+---
+
+### **Example 4:**  
+#### **Original User Prompt:**  
+*"A photo of four handbags."*  
+
+**Analysis of Latent Image at Step 75:**  
+- **Correct Object Count**: There are **exactly four handbags** visible in the image.  
+- **Handbag Shape & Features**: Each handbag has clearly defined straps, zippers, or clasps, making them identifiable.  
+- **Distinct Separation**: The handbags are positioned separately and do not merge into a single indistinct shape.  
+- **Balanced Composition**: The handbags are evenly arranged in the frame, ensuring they are all fully visible.  
+- **Ignored Factors**: Minor texture inconsistencies, lighting variations, or reflections **do not impact the evaluation**.  
+
+DECISION: "True"
+REFINED PROMPT: *"A well-lit, high-resolution photo featuring four distinct handbags arranged neatly on a flat surface. Each handbag has visible straps, metallic clasps, and a structured shape. The handbags should be evenly spaced, ensuring all four are fully visible without overlapping. The background should be neutral and unobtrusive to keep the focus on the handbags."*  
+---
+
+### **Decision Process:**  
+1. If the **image represents the {original_prompt} prompt**, output:  
+   
+   DECISION: "True"
+   REFINED PROMPT: "<Your improved single prompt here>"
+
+2. If the **image does not represent the prompt at all or has inconsistencies**, output:  
+   DECISION: "False"
+   REFINED PROMPT: "<Your improved single prompt here>"
+
+Note: Strictly follow the output format mentioned below.
+DECISION: "True" or "False"
 REFINED PROMPT: "<Your improved single prompt here>"
-
----
-
-### **Constraints & Guidelines:**  
-✅ **Preserve User Intent** – Do not introduce entirely new subjects or concepts unless needed for correction.  
-✅ **Be Concise & Specific** – Ensure clarity while keeping the refined prompt succinct.  
-✅ **Focus on Fixing Observed Issues** – Modify the prompt to correct image inconsistencies rather than making arbitrary changes.  
-✅ **Enhance but Not Overwrite** – Improve detail, composition, and style without drastically altering the original vision.  
-
----
 """}
             ],
         }
@@ -140,8 +161,8 @@ REFINED PROMPT: "<Your improved single prompt here>"
 
 # === MAIN FUNCTION FOR TESTING ===
 if __name__ == "__main__":
-    test_prompt = "A cozy library with wooden bookshelves and a reading lamp, but with no windows in sight."
-    test_image_path = "outputs/intermediate/step_75.png" 
+    test_prompt = "A photo of a cat."
+    test_image_path = "outputs/final/final_image.png" 
 
     print("\n🔹 **Testing Qwen2.5-VL with Step 75 Latent Image...**")
     refined_prompt = get_refined_prompt(test_prompt, test_image_path)
