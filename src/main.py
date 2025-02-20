@@ -38,16 +38,9 @@ def parse_args():
 # 🔹 Utility Functions
 # ======================== #
 def load_prompts(file_path):
-    """Loads prompts from JSON or text file."""
-    if file_path.endswith(".json"):
-        with open(file_path, "r") as f:
-            data = json.load(f)
-            return data["prompts"]
-    elif file_path.endswith(".txt"):
-        with open(file_path, "r") as f:
-            return [line.strip() for line in f.readlines()]
-    else:
-        raise ValueError("Unsupported file format. Use .json or .txt")
+    """Loads prompts from JSON file grouped by tag."""
+    with open(file_path, "r") as f:
+        return json.load(f)
 
 def parse_qwen_output(full_output):
     """Parses Qwen output to extract decision (True/False) and refined prompt."""
@@ -71,24 +64,20 @@ def move_files(file_map):
             os.rename(src, dest)
 
 # ======================== #
-# 🔹 Main Pipeline
+# 🔹 Tag-Specific Logic
 # ======================== #
-def main():
-    args = parse_args()
+def process_tag(tag, prompts, output_dir, model_version):
+    """Process all prompts for a specific tag."""
+    print(f"\n🔹 Processing tag: {tag}")
+    tag_output_dir = os.path.join(output_dir, tag)
+    os.makedirs(tag_output_dir, exist_ok=True)
 
-    # Ensure output directories exist
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    # Load prompts
-    prompts = load_prompts(args.prompts_file)
-
-    # Process each prompt
     for idx, prompt in enumerate(prompts):
-        print(f"\n🚀 Processing Prompt {idx+1}/{len(prompts)}:\n{prompt}")
+        print(f"\n🚀 Processing Prompt {idx+1}/{len(prompts)} for tag {tag}:\n{prompt}")
 
         # Create unique prompt-specific folder
         prompt_id = f"prompt_{idx+1:03d}"
-        prompt_output_dir = os.path.join(args.output_dir, prompt_id)
+        prompt_output_dir = os.path.join(tag_output_dir, prompt_id)
         os.makedirs(prompt_output_dir, exist_ok=True)
 
         # ----------------------- #
@@ -100,7 +89,7 @@ def main():
             generator_seed=generator_seed_1, 
             save_intermediate_steps=True,
             output_dir=prompt_output_dir,
-            model_version=args.model_version  # Pass the model version
+            model_version=model_version
         )
         
         # Append the generator seed to the prompt-specific seed file
@@ -116,7 +105,7 @@ def main():
         # ----------------------- #
         # 🔹 Step 2: First Refinement (Step 25 → Step 100)
         # ----------------------- #
-        full_output_25 = get_refined_prompt(prompt, os.path.join(prompt_output_dir, "step_75.png"))
+        full_output_25 = get_refined_prompt(prompt, os.path.join(prompt_output_dir, "step_75.png"), tag)
         decision_25, refined_prompt_25 = parse_qwen_output(full_output_25)
 
         # Save Qwen output
@@ -144,14 +133,14 @@ def main():
                 save_steps={38, 49, 57},
                 output_dir=prompt_output_dir,
                 prefix="refined_25_",
-                model_version=args.model_version  # Pass the model version
+                model_version=model_version
             )
 
         # ----------------------- #
         # 🔹 Step 3: Second Refinement (Step 10 → Step 100)
         # ----------------------- #
         refined_25_step_75_image = os.path.join(prompt_output_dir, "refined_25_step_75.png")
-        full_output_10 = get_refined_prompt(prompt, refined_25_step_75_image)
+        full_output_10 = get_refined_prompt(prompt, refined_25_step_75_image, tag)
         decision_10, refined_prompt_10 = parse_qwen_output(full_output_10)
 
         refined_prompt_10_file = os.path.join(prompt_output_dir, "refined_prompt_10.txt")
@@ -178,14 +167,14 @@ def main():
                 save_steps={14, 23, 45, 59, 68},
                 output_dir=prompt_output_dir,
                 prefix="refined_10_",
-                model_version=args.model_version  # Pass the model version
+                model_version=model_version
             )
 
         # ----------------------- #
         # 🔹 Step 4: Final Generation with Latest Refined Prompt
         # ----------------------- #
         refined_10_step_75_image = os.path.join(prompt_output_dir, "refined_10_step_75.png")
-        full_output_final = get_refined_prompt(prompt, refined_10_step_75_image)
+        full_output_final = get_refined_prompt(prompt, refined_10_step_75_image, tag)
         decision_final, refined_prompt_final = parse_qwen_output(full_output_final)
 
         refined_prompt_final_file = os.path.join(prompt_output_dir, "refined_prompt_final.txt")
@@ -209,7 +198,7 @@ def main():
             save_intermediate_steps=True,
             output_dir=prompt_output_dir,
             prefix="final_",
-            model_version=args.model_version  # Pass the model version
+            model_version=model_version
         )
 
         # Append the second generator seed to the same seed file
@@ -217,9 +206,24 @@ def main():
             f.write(f"{generator_seed_2}\n")
 
         move_files({"outputs/final/final_image.png": os.path.join(prompt_output_dir, "final_final_image.png")})
-        print(f"🎉 Completed {prompt_id}! Results saved in {prompt_output_dir}")
+        print(f"🎉 Completed {prompt_id} for tag {tag}! Results saved in {prompt_output_dir}")
 
-    print("\n✅ Batch Processing Complete!")
+    print(f"\n✅ Completed processing for tag: {tag}")
+
+# ======================== #
+# 🔹 Main Pipeline
+# ======================== #
+def main():
+    args = parse_args()
+
+    # Load prompts grouped by tag
+    grouped_prompts = load_prompts(args.prompts_file)
+
+    # Process each tag separately
+    for tag, prompts in grouped_prompts.items():
+        process_tag(tag, prompts, args.output_dir, args.model_version)
+
+    print("\n✅ Batch Processing Complete for all tags!")
 
 if __name__ == "__main__":
     main()
