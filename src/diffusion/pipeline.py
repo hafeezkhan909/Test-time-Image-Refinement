@@ -83,6 +83,5 @@ def generate_image(prompt, generator_seed, save_intermediate_steps=False, output
     # Save final image
     final_image_path = os.path.join(output_dir, f"{prefix}final_image.png")  # Add prefix to filename
     save_image(decode_latents(latents, vae), final_image_path)
-    print(f"Saved final image to {final_image_path}")
 
     return generator_seed, latents_dict
