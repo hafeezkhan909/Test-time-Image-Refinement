@@ -5,7 +5,7 @@ from diffusion.models import load_models
 from diffusion.image_utils import decode_latents, save_image
 from diffusion.config import DEVICE, HEIGHT, WIDTH, NUM_INFERENCE_STEPS, GUIDANCE_SCALE, BATCH_SIZE
 
-def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermediate_steps=False, save_steps = {38, 49, 57}, output_dir=None, prefix=""):
+def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermediate_steps=False, save_steps = {38, 49, 57}, output_dir=None, prefix="", model_version=""):
     """
     Refines an image starting from a latent state (e.g. at t=25) up to the final clean image.
     
@@ -23,7 +23,7 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
         latents: The final latent state.
     """
     # Load all required models
-    vae, tokenizer, text_encoder, unet, scheduler = load_models(DEVICE)
+    vae, tokenizer, text_encoder, unet, scheduler = load_models(DEVICE, model_version=model_version)
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
