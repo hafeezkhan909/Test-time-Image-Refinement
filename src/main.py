@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="new_outputs/batch_results_test",
+        default="new_outputs/batch_results_2.1",
         help="Directory to save outputs (default: new_outputs/batch_results_test)"
     )
     return parser.parse_args()
