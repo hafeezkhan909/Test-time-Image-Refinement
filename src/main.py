@@ -84,7 +84,7 @@ def process_tag(tag, prompts, output_dir, model_version):
         # ----------------------- #
         # 🔹 Step 1: Initial Image Generation (Step 0 → Step 100)
         # ----------------------- #
-        generator_seed_1 = random.randint(0, 1000000)
+        generator_seed_1 = 42
         generator_seed_1, latents_dict = generate_image(
             prompt, 
             generator_seed=generator_seed_1, 
@@ -192,7 +192,7 @@ def process_tag(tag, prompts, output_dir, model_version):
                 f.write("ES3_final_image.png")  # Write the content inside the file
 
         print(f"✅ Generating final image with refined prompt: {refined_prompt_final}")
-        generator_seed_2 = random.randint(0, 1000000)
+        generator_seed_2 = 42
         generate_image(
             refined_prompt_final, 
             generator_seed=generator_seed_2, 
