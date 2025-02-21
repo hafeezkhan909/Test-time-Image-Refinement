@@ -1,7 +1,7 @@
 # **Diffusion-Model-LLM**
 
 ## **Overview**
-This project integrates a **diffusion model** with **LLM-guided prompt refinement** to iteratively enhance text-to-image generation. The pipeline consists of **prompt extraction, image generation, and post-processing** to ensure high-quality results. 
+This project integrates a **diffusion model** with **LLM-guided prompt refinement** to iteratively enhance text-to-image generation. The pipeline consists of **prompt extraction, image generation, and post-processing**. 
 
 ---
 
@@ -22,7 +22,7 @@ Ensure all necessary paths are set correctly:
 source scripts/config.sh
 ```
 
-This sets environment variables like:
+This sets environment variables :
 - `PYTHONPATH` → Source directory
 - `PROMPTS_FILE` → Filtered prompts file
 - `OUTPUT_DIR` → Output directory
@@ -84,6 +84,7 @@ bash scripts/clean.sh
 ```
 
 This will delete:
+
 ✅ The virtual environment (`venv/`)  
 ✅ All generated images (`generated_images/`)  
 ✅ Intermediate outputs (`new_outputs/`)  
