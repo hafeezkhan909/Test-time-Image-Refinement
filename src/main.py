@@ -3,7 +3,7 @@ import json
 import torch
 import argparse
 from diffusion.pipeline import generate_image
-from q_test import get_refined_prompt
+from qwen_integration import get_refined_prompt
 from diffusion.refine import refine_image
 import random
 
