@@ -37,20 +37,21 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
         return_tensors="pt"
     )
     with torch.no_grad():
-        text_embeddings = text_encoder(text_input.input_ids.to(DEVICE))[0]
+        text_output = text_encoder(text_input.input_ids.to(DEVICE))
+        text_embeddings = text_output.last_hidden_state  # Use last_hidden_state
 
-    # Prepare classifier-free guidance embeddings
-    max_length = text_input.input_ids.shape[-1]
+    # Classifier-free guidance: create unconditional embeddings
     uncond_input = tokenizer(
         [""] * BATCH_SIZE,
         padding="max_length",
-        max_length=max_length,
+        max_length=text_input.input_ids.shape[-1],  # Match prompt's length
         return_tensors="pt"
     )
+    
     with torch.no_grad():
-        uncond_embeddings = text_encoder(uncond_input.input_ids.to(DEVICE))[0]
+        uncond_output = text_encoder(uncond_input.input_ids.to(DEVICE))
+        uncond_embeddings = uncond_output.last_hidden_state  # Use last_hidden_state
 
-    # Concatenate unconditional and text embeddings
     text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
     # (Re)initialize the scheduler timesteps

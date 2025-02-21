@@ -23,24 +23,26 @@ def generate_image(prompt, generator_seed, save_intermediate_steps=False, output
         return_tensors="pt"
     )
     with torch.no_grad():
-        text_embeddings = text_encoder(text_input.input_ids.to(DEVICE))[0]
+        text_output = text_encoder(text_input.input_ids.to(DEVICE))
+        text_embeddings = text_output.last_hidden_state  # Use last_hidden_state
 
-    # Classifier-free guidance
-    max_length = text_input.input_ids.shape[-1]
+    # Classifier-free guidance: create unconditional embeddings
     uncond_input = tokenizer(
         [""] * BATCH_SIZE,
         padding="max_length",
-        max_length=max_length,
+        max_length=text_input.input_ids.shape[-1],  # Match prompt's length
         return_tensors="pt"
     )
+
     with torch.no_grad():
-        uncond_embeddings = text_encoder(uncond_input.input_ids.to(DEVICE))[0]
+        uncond_output = text_encoder(uncond_input.input_ids.to(DEVICE))
+        uncond_embeddings = uncond_output.last_hidden_state  # Use last_hidden_state
 
     text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
     # Generate initial noise
     generator = torch.manual_seed(generator_seed)  # ✅ Each prompt gets a unique seed
-    latents = torch.randn((BATCH_SIZE, unet.in_channels, HEIGHT // 8, WIDTH // 8), generator=generator).to(DEVICE)
+    latents = torch.randn((BATCH_SIZE, unet.config.in_channels, HEIGHT // 8, WIDTH // 8), generator=generator).to(DEVICE)
 
     # Initialize scheduler
     scheduler.set_timesteps(NUM_INFERENCE_STEPS)
