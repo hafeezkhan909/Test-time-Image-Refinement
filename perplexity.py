@@ -70,7 +70,7 @@ for idx, prompt_set in enumerate(refined_prompt_sets):
         perplexity = compute_perplexity_gpt2(prompt_set[step], gpt2_model, gpt2_tokenizer)
         print(f"perplexity score for {idx} and {step}: {perplexity}")
         step_perplexities[step].append(perplexity)
-
+# 
 # === Compute Aggregate Perplexity (Mean for Each Step) ===
 aggregate_results = {step: sum(perplexities) / len(perplexities) for step, perplexities in step_perplexities.items()}
 
@@ -79,15 +79,15 @@ df_aggregate = pd.DataFrame(aggregate_results.items(), columns=["Step", "Average
 df_aggregate_sorted = df_aggregate.sort_values(by="Step")
 
 # === Save and Plot Perplexity Graph ===
-plt.figure(figsize=(8, 5))
-plt.plot(df_aggregate_sorted["Step"], df_aggregate_sorted["Average Perplexity"], marker="o", linestyle="-", color="b")
-plt.xlabel("Latent Image Step")
-plt.ylabel("Average Perplexity")
-plt.title("Aggregate Perplexity of Refined Prompts Across Steps")
-plt.xticks(rotation=30)
-plt.grid(True)
-plt.savefig("aggregate_perplexity_vs_steps.png")  # Saves the plot
-plt.show()
+# plt.figure(figsize=(8, 5))
+# plt.plot(df_aggregate_sorted["Step"], df_aggregate_sorted["Average Perplexity"], marker="o", linestyle="-", color="b")
+# plt.xlabel("Latent Image Step")
+# plt.ylabel("Average Perplexity")
+# plt.title("Aggregate Perplexity of Refined Prompts Across Steps")
+# plt.xticks(rotation=30)
+# plt.grid(True)
+# plt.savefig("aggregate_perplexity_vs_steps.png")  # Saves the plot
+# plt.show()
 
 # Print the aggregate perplexity scores
 print("\n=== Aggregate Perplexity Scores ===")
