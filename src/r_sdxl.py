@@ -119,11 +119,12 @@ for tag, prompts in prompt_data.items():
                     print(f"🔄 Renamed {old_path} to {new_path}")
 
             if idx < len(swap_steps) - 1:
-                step_74_image_path = os.path.join(output_dir, f"swap_at_{swap_step}_step_99.png")
+                step_74_image_path = os.path.join(output_dir, f"swap_at_{swap_step}_step_74.png")
                 full_output = get_refined_prompt(original_prompt, step_74_image_path, tag)
                 decision, current_refined_prompt = parse_qwen_output(full_output)
                 print(f"\n🔄 Qwen refined prompt: {current_refined_prompt}")
-                
+                print(f"✅ Qwen decision for {tag}/{prompt_id}, Swap at {swap_step}: {decision}")
+
                 if decision == "True":
                     old_path = os.path.join(output_dir, f"swap_at_{swap_step}_step_99.png")
                     new_path = os.path.join(output_dir, f"ES_{idx+1}_final_image.png")
