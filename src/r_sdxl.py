@@ -1,4 +1,5 @@
 import os
+import json
 import torch
 from diffusers import StableDiffusionXLPipeline
 from PIL import Image
@@ -15,13 +16,13 @@ def parse_qwen_output(full_output):
             refined_prompt = line.replace("REFINED PROMPT:", "").strip().strip('"')
     return decision, refined_prompt
 
-# Configuration
+# Load prompts
+with open("filtered_prompts.json", "r") as f:
+    prompt_data = json.load(f)
+
 SEED = 42
 swap_steps = [None, 24, 9, 0]  # Order of swaps
-original_prompt = "A photo of a white tiger sitting on a couch"
-tag = "position"
 
-# Function to convert latents to PIL images
 def latents_to_pil(pipe, latents):
     with torch.no_grad():
         original_dtype = pipe.vae.dtype
@@ -32,21 +33,23 @@ def latents_to_pil(pipe, latents):
         images = images.permute(0, 2, 3, 1).cpu().numpy()
         return [Image.fromarray((img * 255).astype("uint8")) for img in images]
 
-# Callback function
-def create_callback(pipe, swap_step, img_dir, latent_dir, swap_prompt=None):
+def create_callback(pipe, swap_step, output_dir, swap_prompt=None):
     def callback(pipe, step_index, timestep, callback_kwargs):
         latents = callback_kwargs.get("latents")
         if latents is None:
             return callback_kwargs
 
         save_steps = [74, 99]
-
+        
         if step_index in save_steps:
-            image_path = os.path.join(img_dir, f"step_{step_index}.png")
+            unique_name = f"swap_at_{swap_step}_step_{step_index}" if swap_step is not None else f"swap_at_None_step_{step_index}"
+            image_path = os.path.join(output_dir, f"{unique_name}.png")
+            latent_path = os.path.join(output_dir, f"{unique_name}.pt")
+            
             pil_images = latents_to_pil(pipe, latents)
             pil_images[0].save(image_path)
-            torch.save(latents, os.path.join(latent_dir, f"step_{step_index}.pt"))
-            print(f"\n🔍 Saved output at step {step_index}")
+            torch.save(latents, latent_path)
+            print(f"\n🔍 Saved output: {image_path}")
 
         if step_index == swap_step and swap_prompt:
             print(f"\n=== SWAPPING PROMPT AT STEP {swap_step} ===")
@@ -74,7 +77,6 @@ def create_callback(pipe, swap_step, img_dir, latent_dir, swap_prompt=None):
         return callback_kwargs
     return callback
 
-# Initialize pipeline
 pipe = StableDiffusionXLPipeline.from_pretrained(
     "stabilityai/stable-diffusion-xl-base-1.0", 
     torch_dtype=torch.float16, 
@@ -83,39 +85,48 @@ pipe = StableDiffusionXLPipeline.from_pretrained(
 ).to("cuda")
 pipe.enable_model_cpu_offload()
 
-# Main generation loop
-exp_dir = "./imgs/dynamic_refinement"
-current_refined_prompt = None  # Track refined prompts between iterations
+for tag, prompts in prompt_data.items():
+    for prompt_info in prompts:
+        original_prompt = prompt_info["prompt"]
+        line_number = prompt_info["line_number"]
+        prompt_id = f"prompt_{line_number:03d}"
+        output_dir = os.path.join("./imgs/dynamic_refinements", tag, prompt_id)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        current_refined_prompt = None
 
-for idx, swap_step in enumerate(swap_steps):
-    print(f"\n🚀 Starting generation: Swap at {swap_step}")
-    
-    # Create directories (keep this the same)
-    iter_dir = os.path.join(exp_dir, f"swap_at_{swap_step}")
-    img_dir = os.path.join(iter_dir, "images")
-    latent_dir = os.path.join(iter_dir, "latents")
-    os.makedirs(img_dir, exist_ok=True)
-    os.makedirs(latent_dir, exist_ok=True)
+        for idx, swap_step in enumerate(swap_steps):
+            print(f"\n🚀 Processing: {tag}/{prompt_id} | Swap at {swap_step}")
+            
+            generator = torch.Generator(device="cuda").manual_seed(SEED)
+            pipe(
+                prompt=original_prompt,
+                num_inference_steps=100,
+                callback_on_step_end=create_callback(
+                    pipe, 
+                    swap_step,
+                    output_dir,
+                    swap_prompt=current_refined_prompt if current_refined_prompt else None
+                ),
+                generator=generator
+            )
 
-    # Always use original prompt as starting point
-    generator = torch.Generator(device="cuda").manual_seed(SEED)
-    pipe(
-        prompt=original_prompt,  # ← Always original here
-        num_inference_steps=100,
-        callback_on_step_end=create_callback(
-            pipe, 
-            swap_step, 
-            img_dir, 
-            latent_dir,
-            # Only pass refined prompt if we have one
-            swap_prompt=current_refined_prompt if current_refined_prompt else None
-        ),
-        generator=generator
-    )
+            if swap_step == 0:
+                old_path = os.path.join(output_dir, "swap_at_0_step_99.png")
+                new_path = os.path.join(output_dir, "final_final_image.png")
+                if os.path.exists(old_path):
+                    os.rename(old_path, new_path)
+                    print(f"🔄 Renamed {old_path} to {new_path}")
 
-    # Get refinement for next iteration (except last)
-    if idx < len(swap_steps) - 1:
-        step_74_image_path = os.path.join(img_dir, "step_74.png")
-        full_output = get_refined_prompt(original_prompt, step_74_image_path, tag)
-        _, current_refined_prompt = parse_qwen_output(full_output)
-        print(f"\n🔄 Qwen refined prompt: {current_refined_prompt}")
+            if idx < len(swap_steps) - 1:
+                step_74_image_path = os.path.join(output_dir, f"swap_at_{swap_step}_step_99.png")
+                full_output = get_refined_prompt(original_prompt, step_74_image_path, tag)
+                decision, current_refined_prompt = parse_qwen_output(full_output)
+                print(f"\n🔄 Qwen refined prompt: {current_refined_prompt}")
+                
+                if decision == "True":
+                    old_path = os.path.join(output_dir, f"swap_at_{swap_step}_step_99.png")
+                    new_path = os.path.join(output_dir, f"ES_{idx+1}_final_image.png")
+                    if os.path.exists(old_path):
+                        os.rename(old_path, new_path)
+                        print(f"🔄 Renamed {old_path} to {new_path}")
