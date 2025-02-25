@@ -72,7 +72,7 @@ for image_name, prompt in prompts.items():
         "human_preference": 1,
         "prompt": prompt,
         "id": len(hps_meta) + 1,
-        "file_path": [os.path.join(args.image_folder, image_name + ".png")],
+        "file_path": [os.path.join(args.image_folder, image_name + ".png")], 
         "user_hash": "example_hash",
         "contain_name": False
     })
