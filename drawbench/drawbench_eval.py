@@ -72,7 +72,7 @@ for image_name, prompt in prompts.items():
         "human_preference": 1,
         "prompt": prompt,
         "id": len(hps_meta) + 1,
-        "file_path": [os.path.join(args.image_folder, image_name)],
+        "file_path": [os.path.join(args.image_folder, image_name + ".jpg")],
         "user_hash": "example_hash",
         "contain_name": False
     })
@@ -82,7 +82,8 @@ with open(hps_meta_path, "w") as f:
     json.dump(hps_meta, f, indent=4)
 
 print("\n🔹 Running HPS Evaluation...")
-os.system(f"python drawbench/hps/evaluate_hps.py --image_folder {args.image_folder} --hpc {hpc_checkpoint} --meta_file {hps_meta_path}")
+os.system(f"python drawbench/hps/evaluate_hps.py --image_folder {args.image_folder} --hpc {hpc_checkpoint} --meta_file {hps_meta_path} --output_json {hps_output}")
+
 print(f"✅ HPS results saved at `{hps_output}`")
 
 # ================================
@@ -90,7 +91,7 @@ print(f"✅ HPS results saved at `{hps_output}`")
 # ================================
 xiqe_output = os.path.join(args.output_dir, "xiqe_results.json")
 print("\n🔹 Running X-IQE Evaluation...")
-os.system(f"python drawbench/xiqe_evaluation.py --image_folder {args.image_folder} --prompt_json {args.prompt_json}")
+os.system(f"python drawbench/xiqe_evaluation.py --image_folder {args.image_folder} --prompt_json {args.prompt_json} --output_json {xiqe_output}")
 print(f"✅ X-IQE results saved at `{xiqe_output}`")
 
 # ================================
