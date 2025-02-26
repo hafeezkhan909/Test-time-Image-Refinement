@@ -108,17 +108,6 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
             restart_steps=restart_steps,
             refinement_step=refinement_step
         )
-        
-        # Append the generator seed to the prompt-specific seed file
-        seed_file = os.path.join(prompt_output_dir, "seed.txt")
-        with open(seed_file, "a") as f:
-            f.write(f"{generator_seed_1}\n")
-
-        # Ensure required files exist
-        if 10 not in latents_dict or not os.path.exists(os.path.join(prompt_output_dir, "step_75.png")):
-            print(f"❌ Skipping {prompt_id}, missing required latent/image files.")
-            # continue
-
 
         # ========================== #
         # 🔹 Refinement Loop
