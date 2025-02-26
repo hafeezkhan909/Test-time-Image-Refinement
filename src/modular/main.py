@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument(
         "--model_version",
         type=str,
-        default="1.5",
+        default="2.1",
         choices=["1.4", "1.5", "2.1"],
         help="Stable Diffusion model version to use (default: 1.5)"
     )
@@ -36,13 +36,13 @@ def parse_args():
         "--restart_steps",
         type=int,
         nargs="+",
-        default=[25, 10, 0],
+        default=[],
         help="List of restart steps (e.g., --restart_steps 25 10 0)"
     )
     parser.add_argument(
         "--refinement_step",
         type=int,
-        default=75,
+        default=99,
         help="Step at which to take feedback from Qwen (default: 75)"
     )
     return parser.parse_args()
@@ -123,13 +123,13 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                 prev_step_image = os.path.join(prompt_output_dir, f"step_{refinement_step}.png")
             else:
                 prev_restart_step = restart_steps[i - 1]  # Get the previous restart step
-                prev_step_image = os.path.join(prompt_output_dir, f"refined_{prev_restart_step}_step_{refinement_step}.png")
+                prev_step_image = os.path.join(prompt_output_dir, f"{i}_refined_{prev_restart_step}_step_{refinement_step}.png")
 
             full_output = get_refined_prompt(current_prompt, prev_step_image, tag)
             decision, refined_prompt = parse_qwen_output(full_output)
 
             # Save refined prompt
-            with open(os.path.join(prompt_output_dir, f"refined_prompt_{restart_step}.txt"), "w") as f:
+            with open(os.path.join(prompt_output_dir, f"{i}_refined_prompt_{restart_step}.txt"), "w") as f:
                 f.write(full_output)
 
             if i == 0:
@@ -152,7 +152,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                     generator_seed=generator_seed_2, 
                     save_intermediate_steps=True,
                     output_dir=prompt_output_dir,
-                    prefix=f"{i+1}_",
+                    prefix=f"{i+1}_refined_{restart_step}_",
                     model_version=model_version,
                     refinement_step=refinement_step
                 )
@@ -165,7 +165,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                     refinement_step=refinement_step,
                     adjusted_refinement_step=adjusted_refinement_step,
                     output_dir=prompt_output_dir,
-                    prefix=f"refined_{restart_step}_",
+                    prefix=f"{i+1}_refined_{restart_step}_",
                     model_version=model_version
                 )
     print(f"\n✅ Completed processing for tag: {tag}")
