@@ -123,11 +123,12 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                 prev_step_image = os.path.join(prompt_output_dir, f"step_{refinement_step}.png")
             else:
                 prev_restart_step = restart_steps[i - 1]  # Get the previous restart step
-                prev_step_image = os.path.join(prompt_output_dir, f"{i}_refined_{prev_restart_step}_step_{refinement_step}.png")
+                prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png")
 
             full_output = get_refined_prompt(current_prompt, prev_step_image, tag)
             decision, refined_prompt = parse_qwen_output(full_output)
-
+            print(f"✅ Refining further: Refined Prompt for Step {restart_step}: {refined_prompt}")
+            
             # Save refined prompt
             with open(os.path.join(prompt_output_dir, f"{i}_refined_prompt_{restart_step}.txt"), "w") as f:
                 f.write(full_output)
