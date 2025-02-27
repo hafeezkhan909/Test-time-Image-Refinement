@@ -3,13 +3,14 @@ import json
 import shutil
 import argparse
 
-def post_process_drawbench(output_dir, generated_dir):
+def post_process_drawbench(output_dir, generated_dir, final_image_name):
     """
     Reorganizes generated images from multiple categories into a single folder.
 
     Args:
         output_dir (str): Path to the output directory where images will be saved.
         generated_dir (str): Path to the directory containing the generated images, structured by category.
+        final_image_name (str): User-specified final image name (e.g., "custom_final.png").
     """
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -19,7 +20,7 @@ def post_process_drawbench(output_dir, generated_dir):
         "ES1_final_image.png",  # Select the image from early stopping after 1st iter
         "ES2_final_image.png",  # Select the image from early stopping after 2nd iter
         "ES3_final_image.png",  # Select the image from early stopping after 3rd iter
-        "final_final_image.png"  # Reached final step
+        final_image_name        # User-defined final image
     ]
 
     print("\n🔹 Processing generated images...")
@@ -64,7 +65,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Post-process generated images for DrawBench.")
     parser.add_argument("--output_dir", required=True, type=str, help="Path to save the processed images.")
     parser.add_argument("--generated_dir", required=True, type=str, help="Path to the folder containing generated images.")
-
+    parser.add_argument("--final_image_name", type=str, default="final_final_image.png", help="Custom name for the final selected image (default: final_final_image.png)."
+    )
     args = parser.parse_args()
 
-    post_process_drawbench(args.output_dir, args.generated_dir)
+    post_process_drawbench(args.output_dir, args.generated_dir, args.final_image_name)
