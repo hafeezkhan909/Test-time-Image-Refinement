@@ -16,7 +16,7 @@ REFINEMENT_STEP=99
 OUTPUT_DIR="new_outputs/automated_batch_results"
 GENEVEAL_OUTPUT_DIR="generated_images"
 
-python src/forward_injection/main.py --model_version 1.5 --output_dir "$OUTPUT_DIR" --restart_steps "${RESTART_STEPS[@]}" --refinement_step $REFINEMENT_STEP
+python src/modular/main.py --model_version 1.5 --output_dir "$OUTPUT_DIR" --restart_steps "${RESTART_STEPS[@]}" --refinement_step $REFINEMENT_STEP
 
 # Generate the final image filename dynamically
 RESTART_COUNT=${#RESTART_STEPS[@]}
