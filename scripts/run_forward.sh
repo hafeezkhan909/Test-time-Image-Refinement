@@ -20,8 +20,8 @@ python src/forward_injection/main.py --model_version 1.5 --output_dir "$OUTPUT_D
 
 # Generate the final image filename dynamically
 RESTART_COUNT=${#RESTART_STEPS[@]}
-LAST_RESTART=${RESTART_STEPS[-1]}
-FINAL_IMAGE_NAME="final_${RESTART_COUNT}_refined_${LAST_RESTART}_.png"
+FIRST_RESTART=${RESTART_STEPS[0]}
+FINAL_IMAGE_NAME="final_${RESTART_COUNT}_refined_${FIRST_RESTART}_.png"
 
 # Step 3: Post-process the generated images
 echo "🔹 Post-processing generated images. Getting the images ready for GenEval test..."
