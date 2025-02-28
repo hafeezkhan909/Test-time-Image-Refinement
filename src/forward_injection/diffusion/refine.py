@@ -66,7 +66,7 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
     start_idx = None
     for idx, t in enumerate(scheduler.timesteps):
         if idx == start_timestep:
-            start_idx = idx
+            start_idx = idx + 1
             break
     if start_idx is None:
         raise ValueError(f"Start timestep {start_timestep} not found in scheduler.timesteps.")
