@@ -96,15 +96,15 @@ def main():
     print(f"Overall X-IQE Score: {overall_xiqe_score}")
 
     # Compute weighted average score
-    weighted_avg_score = (
-        average_clipscore * 0.15 +
-        average_aesthetic_score * 0.15 +
-        average_imagereward_score * 0.20 +
-        average_hps_score * 0.20 +
-        overall_xiqe_score * 0.10
-    )
+    # weighted_avg_score = (
+    #     average_clipscore * 0.15 +
+    #     average_aesthetic_score * 0.15 +
+    #     average_imagereward_score * 0.20 +
+    #     average_hps_score * 0.20 
+    #     # +  overall_xiqe_score * 0.10
+    # )
 
-    print(f"\n🎯 Weighted Average Score: {weighted_avg_score}")
+    # print(f"\n🎯 Weighted Average Score: {weighted_avg_score}")
 
 if __name__ == "__main__":
     main()
