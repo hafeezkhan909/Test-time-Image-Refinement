@@ -36,21 +36,24 @@ def extract_xiqe_scores(file_path):
     for image_name, metrics in xiqe_data.items():
         try:
             if "Fidelity" in metrics and "Fidelity" in metrics["Fidelity"]:
-                fidelity_score = int(metrics["Fidelity"]["Fidelity"].split("/")[0])  # Extract numeric value
+                fidelity_value = metrics["Fidelity"]["Fidelity"]
+                fidelity_score = int(fidelity_value.split("/")[0]) if isinstance(fidelity_value, str) else int(fidelity_value)
                 fidelity_scores.append(fidelity_score)
         except (KeyError, ValueError):
             print(f"Warning: Fidelity score missing or incorrect for {image_name}")
 
         try:
             if "Alignment" in metrics and "Alignment score" in metrics["Alignment"]:
-                alignment_score = int(metrics["Alignment"]["Alignment score"].split("/")[0])  # Extract numeric value
+                alignment_value = metrics["Alignment"]["Alignment score"]
+                alignment_score = int(alignment_value.split("/")[0]) if isinstance(alignment_value, str) else int(alignment_value)
                 alignment_scores.append(alignment_score)
         except (KeyError, ValueError):
             print(f"Warning: Alignment score missing or incorrect for {image_name}")
 
         try:
             if "Aesthetics" in metrics and "Overall aesthetic score" in metrics["Aesthetics"]:
-                aesthetics_score = int(metrics["Aesthetics"]["Overall aesthetic score"].split("/")[0])  # Extract numeric value
+                aesthetics_value = metrics["Aesthetics"]["Overall aesthetic score"]
+                aesthetics_score = int(aesthetics_value.split("/")[0]) if isinstance(aesthetics_value, str) else int(aesthetics_value)
                 aesthetics_scores.append(aesthetics_score)
         except (KeyError, ValueError):
             print(f"Warning: Aesthetic score missing or incorrect for {image_name}")
@@ -61,6 +64,7 @@ def extract_xiqe_scores(file_path):
     overall_xiqe_score = avg_fidelity + avg_alignment + avg_aesthetics
 
     return avg_fidelity, avg_alignment, avg_aesthetics, overall_xiqe_score
+
 
 def main():
     # Argument parsing
