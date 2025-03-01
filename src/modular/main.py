@@ -7,7 +7,7 @@ from qwen_integration import get_refined_prompt
 from diffusion.refine import refine_image
 import random
 import math
-
+import shutil
 # ======================== #
 # 🔹 Argument Parsing
 # ======================== #
@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="new_outputs/batch_results1.5_75",
+        default="new_outputs/20100_1.5_vanilla",
         help="Directory to save outputs"
     )
     parser.add_argument(
@@ -106,6 +106,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
             output_dir=prompt_output_dir,
             model_version=model_version,
             restart_steps=restart_steps,
+            prefix="image",
             refinement_step=refinement_step
         )
 
@@ -120,7 +121,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
             adjusted_refinement_step = math.floor(refinement_step * (remaining_steps / 100))
 
             if i == 0: 
-                prev_step_image = os.path.join(prompt_output_dir, f"step_{refinement_step}.png")
+                prev_step_image = os.path.join(prompt_output_dir, f"final_image.png")
             else:
                 prev_restart_step = restart_steps[i - 1]  # Get the previous restart step
                 prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png")
@@ -137,11 +138,11 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
             if i == 0:
               if decision == "True":
                     print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
-                    move_files({os.path.join(prompt_output_dir, "final_image.png"): os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")})
+                    shutil.copy(os.path.join(prompt_output_dir, "final_image.png"), os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png"))
             else:
                 if decision == "True":
                     print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
-                    move_files({os.path.join(prompt_output_dir, f"final_refined_{prev_restart_step}_.png"): os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")})
+                    shutil.copy(os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png"), os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png"))
 
             # current_prompt = refined_prompt
 
