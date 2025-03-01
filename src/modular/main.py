@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument(
         "--model_version",
         type=str,
-        default="2.1",
+        default="1.5",
         choices=["1.4", "1.5", "2.1"],
         help="Stable Diffusion model version to use (default: 1.5)"
     )
@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="outputs",
+        default="new_outputs/batch_results1.5_75",
         help="Directory to save outputs"
     )
     parser.add_argument(
@@ -117,13 +117,14 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
 
             # Compute adjusted refinement step
             remaining_steps = 100 - restart_step
-            adjusted_refinement_step = math.ceil(refinement_step * (remaining_steps / 100))
+            adjusted_refinement_step = math.floor(refinement_step * (remaining_steps / 100))
 
             if i == 0: 
                 prev_step_image = os.path.join(prompt_output_dir, f"step_{refinement_step}.png")
             else:
                 prev_restart_step = restart_steps[i - 1]  # Get the previous restart step
                 prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png")
+                # prev_step_image = os.path.join(prompt_output_dir, f"{i}_refined_{prev_restart_step}_final_image.png") # Use this when running multiple 0's
 
             full_output = get_refined_prompt(current_prompt, prev_step_image, tag)
             decision, refined_prompt = parse_qwen_output(full_output)
@@ -142,7 +143,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                     print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
                     move_files({os.path.join(prompt_output_dir, f"final_refined_{prev_restart_step}_.png"): os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")})
 
-            current_prompt = refined_prompt
+            # current_prompt = refined_prompt
 
             # Restart generation (either from 0 or using refinement)
             if restart_step == 0:
@@ -159,8 +160,8 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                 )
             else:
                 _, _ = refine_image(
-                    current_prompt, 
-                    latents_dict[restart_step], 
+                    refined_prompt=refined_prompt, 
+                    init_latents=latents_dict[restart_step], 
                     start_timestep=restart_step, 
                     save_intermediate_steps=True, 
                     refinement_step=refinement_step,
