@@ -238,6 +238,633 @@ def get_refined_prompt(original_prompt, latent_image_path, tag):
                 ],
             }
         ]
+    elif tag == "two_object2":
+        # Example: Add specific instructions for multi-object prompts
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": f"file://{latent_image_path}"},
+                    {"type": "text", "text": f"""
+                    ### Evaluation Task:
+                    You are an **Image Refinement Assistant**. Your job is to check for **image-prompt correctness** and refine the prompt ONLY. 
+
+                    ### **Given Inputs:**  
+                    1. **Original User Prompt:**  
+                    - {original_prompt}  
+
+                    2. **Look at what is within the latent image:**  
+                    - <You have to Describe what the generated image looks like>  
+                    - <List any specific issues, inconsistencies, or missing details with respect to the {original_prompt}>   
+
+                    - **Do not check for image quality (e.g., sharpness, noise, lighting artifacts).**  
+                    - **Ignore visual noise or distortions during evaluation.**  
+                    - **Only assess whether the image correctly represents the original prompt.**   
+
+                    ---
+
+                    ### **Example 1**  
+
+                    #### **Original User Prompt:**  
+                    *"An angry white dog next to a cute orange cat on a grassy hill at sunset."*  
+
+                    **Analysis of Latent Image at Step 75:**
+                    - The "angry white dog" is faintly discernible but lacks clear definition or features. It appears to blend into the background.
+                    - The "cute orange cat" is indistinct, with no visible form or features, and might not be present at all.
+                    - The grassy hill is visible but lacks texture and detail.
+                    - The sunset lighting is absent, and the colors seem scattered without a clear gradient or sunset tones.
+                    - Overall, the image lacks clarity, structure, and the contrast needed to align with the original prompt.
+
+                    DECISION: "False"
+                    REFINED PROMPT: *"An angry white dog with sharp features, standing next to a cute orange cat with large, expressive eyes on a textured grassy hill. The scene is illuminated by a vibrant sunset, with warm orange and pink hues filling the sky. The hill should have visible blades of grass, and the subjects should be sharply detailed with realistic textures."*  
+                    ---
+
+                    ### **Example 2:**  
+                    #### **Original User Prompt:**  
+                    *"A photo of four handbags."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Correct Object Count**: There are **exactly four handbags** visible in the image.  
+                    - **Handbag Shape & Features**: Each handbag has clearly defined straps, zippers, or clasps, making them identifiable.  
+                    - **Distinct Separation**: The handbags are positioned separately and do not merge into a single indistinct shape.  
+                    - **Balanced Composition**: The handbags are evenly arranged in the frame, ensuring they are all fully visible.  
+                    - **Ignored Factors**: Minor texture inconsistencies, lighting variations, or reflections **do not impact the evaluation**.  
+
+                    DECISION: "True"
+                    REFINED PROMPT: *"A well-lit, high-resolution photo featuring four distinct handbags arranged neatly on a flat surface. Each handbag has visible straps, metallic clasps, and a structured shape. The handbags should be evenly spaced, ensuring all four are fully visible without overlapping. The background should be neutral and unobtrusive to keep the focus on the handbags."*  
+                    ---
+
+                    ### **Example 3**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a toothbrush and a snowboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: The toothbrush is clearly visible, but the snowboard is faint and partially obscured.  
+                    - **Size Discrepancy**: The snowboard appears disproportionately small compared to the toothbrush.  
+                    - **Object Positioning**: The toothbrush is centered, but the snowboard is placed awkwardly in the background, making it difficult to recognize.  
+                    - **Texture Issue**: The snowboard lacks the glossy surface and defined edges typical of a snowboard.  
+
+                    DECISION: "False"  
+                    REFINED PROMPT: *"A high-quality photo of a toothbrush and a snowboard, both clearly visible and well-defined. The toothbrush should have a clean, ergonomic design with visible bristles and a smooth plastic handle. The snowboard should be large, with a sleek, glossy surface and distinctive graphics or branding. The two objects should be positioned naturally, with the toothbrush placed in the foreground and the snowboard fully visible in the background, ensuring proper scale and separation. The background should be neutral to avoid distraction while keeping both objects in sharp focus."*  
+
+                    ---
+
+                    ### **Example 4**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a horse and a computer keyboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: Both the horse and the keyboard are clearly visible.  
+                    - **Size & Perspective**: The horse appears large and well-proportioned, while the keyboard maintains a realistic size.  
+                    - **Detail Accuracy**: The horse has a well-defined mane, muscular structure, and natural fur texture. The keyboard has visible keys with realistic spacing.  
+                    - **Positioning**: The horse is placed in the background, and the keyboard is in the foreground, ensuring both objects remain distinguishable.  
+
+                    DECISION: "True"  
+                    REFINED PROMPT: *"A well-composed photo featuring a fully visible horse in the background and a computer keyboard in the foreground. The horse should be detailed, with a flowing mane, visible musculature, and natural fur texture. The keyboard should be modern, with clearly defined keys and a structured layout. The scene should have a neutral backdrop to enhance clarity and avoid blending, ensuring both objects are distinct while maintaining natural proportions and realistic lighting."*                      
+                    ---
+                    
+                    ### **Decision Process:**  
+                    1. If the **image represents the {original_prompt} prompt**, output:  
+                    
+                    DECISION: "True"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    2. If the **image does not represent the prompt at all or has inconsistencies**, output:  
+                    DECISION: "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    Note: Strictly follow the output format mentioned below.
+                    DECISION: "True" or "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+                    """}
+                ],
+            }
+        ]
+    elif tag == "two_object3":
+        # Example: Add specific instructions for multi-object prompts
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": f"file://{latent_image_path}"},
+                    {"type": "text", "text": f"""
+                    ### Evaluation Task:
+                    You are an **Image Refinement Assistant**. Your job is to check for **image-prompt correctness** and refine the prompt ONLY. 
+
+                    ### **Given Inputs:**  
+                    1. **Original User Prompt:**  
+                    - {original_prompt}  
+
+                    2. **Look at what is within the latent image:**  
+                    - <You have to Describe what the generated image looks like>  
+                    - <List any specific issues, inconsistencies, or missing details with respect to the {original_prompt}>   
+
+                    - **Do not check for image quality (e.g., sharpness, noise, lighting artifacts).**  
+                    - **Ignore visual noise or distortions during evaluation.**  
+                    - **Only assess whether the image correctly represents the original prompt.**   
+
+                    ---
+
+                    ### **Example 1**  
+
+                    #### **Original User Prompt:**  
+                    *"An angry white dog next to a cute orange cat on a grassy hill at sunset."*  
+
+                    **Analysis of Latent Image at Step 75:**
+                    - The "angry white dog" is faintly discernible but lacks clear definition or features. It appears to blend into the background.
+                    - The "cute orange cat" is indistinct, with no visible form or features, and might not be present at all.
+                    - The grassy hill is visible but lacks texture and detail.
+                    - The sunset lighting is absent, and the colors seem scattered without a clear gradient or sunset tones.
+                    - Overall, the image lacks clarity, structure, and the contrast needed to align with the original prompt.
+
+                    DECISION: "False"
+                    REFINED PROMPT: *"An angry white dog with sharp features, standing next to a cute orange cat with large, expressive eyes on a textured grassy hill. The scene is illuminated by a vibrant sunset, with warm orange and pink hues filling the sky. The hill should have visible blades of grass, and the subjects should be sharply detailed with realistic textures."*  
+                    ---
+
+                    ### **Example 2:**  
+                    #### **Original User Prompt:**  
+                    *"A photo of four handbags."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Correct Object Count**: There are **exactly four handbags** visible in the image.  
+                    - **Handbag Shape & Features**: Each handbag has clearly defined straps, zippers, or clasps, making them identifiable.  
+                    - **Distinct Separation**: The handbags are positioned separately and do not merge into a single indistinct shape.  
+                    - **Balanced Composition**: The handbags are evenly arranged in the frame, ensuring they are all fully visible.  
+                    - **Ignored Factors**: Minor texture inconsistencies, lighting variations, or reflections **do not impact the evaluation**.  
+
+                    DECISION: "True"
+                    REFINED PROMPT: *"A well-lit, high-resolution photo featuring four distinct handbags arranged neatly on a flat surface. Each handbag has visible straps, metallic clasps, and a structured shape. The handbags should be evenly spaced, ensuring all four are fully visible without overlapping. The background should be neutral and unobtrusive to keep the focus on the handbags."*  
+                    ---
+
+                    ### **Example 3**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a toothbrush and a snowboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: The toothbrush is clearly visible, but the snowboard is faint and partially obscured.  
+                    - **Size Discrepancy**: The snowboard appears disproportionately small compared to the toothbrush.  
+                    - **Object Positioning**: The toothbrush is centered, but the snowboard is placed awkwardly in the background, making it difficult to recognize.  
+                    - **Texture Issue**: The snowboard lacks the glossy surface and defined edges typical of a snowboard.  
+
+                    DECISION: "False"  
+                    REFINED PROMPT: *"A high-quality photo of a toothbrush and a snowboard, both clearly visible and well-defined. The toothbrush should have a clean, ergonomic design with visible bristles and a smooth plastic handle. The snowboard should be large, with a sleek, glossy surface and distinctive graphics or branding. The two objects should be positioned naturally, with the toothbrush placed in the foreground and the snowboard fully visible in the background, ensuring proper scale and separation. The background should be neutral to avoid distraction while keeping both objects in sharp focus."*  
+
+                    ---
+
+                    ### **Example 4**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a horse and a computer keyboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: Both the horse and the keyboard are clearly visible.  
+                    - **Size & Perspective**: The horse appears large and well-proportioned, while the keyboard maintains a realistic size.  
+                    - **Detail Accuracy**: The horse has a well-defined mane, muscular structure, and natural fur texture. The keyboard has visible keys with realistic spacing.  
+                    - **Positioning**: The horse is placed in the background, and the keyboard is in the foreground, ensuring both objects remain distinguishable.  
+
+                    DECISION: "True"  
+                    REFINED PROMPT: *"A well-composed photo featuring a fully visible horse in the background and a computer keyboard in the foreground. The horse should be detailed, with a flowing mane, visible musculature, and natural fur texture. The keyboard should be modern, with clearly defined keys and a structured layout. The scene should have a neutral backdrop to enhance clarity and avoid blending, ensuring both objects are distinct while maintaining natural proportions and realistic lighting."*                      
+                    ---
+                    
+                    ### **Decision Process:**  
+                    1. If the **image represents the {original_prompt} prompt**, output:  
+                    
+                    DECISION: "True"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    2. If the **image does not represent the prompt at all or has inconsistencies**, output:  
+                    DECISION: "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    Note: Strictly follow the output format mentioned below.
+                    DECISION: "True" or "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+                    """}
+                ],
+            }
+        ]
+    elif tag == "single_object2":
+        # Example: Add specific instructions for multi-object prompts
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": f"file://{latent_image_path}"},
+                    {"type": "text", "text": f"""
+                    ### Evaluation Task:
+                    You are an **Image Refinement Assistant**. Your job is to check for **image-prompt correctness** and refine the prompt ONLY. 
+
+                    ### **Given Inputs:**  
+                    1. **Original User Prompt:**  
+                    - {original_prompt}  
+
+                    2. **Look at what is within the latent image:**  
+                    - <You have to Describe what the generated image looks like>  
+                    - <List any specific issues, inconsistencies, or missing details with respect to the {original_prompt}>   
+
+                    - **Do not check for image quality (e.g., sharpness, noise, lighting artifacts).**  
+                    - **Ignore visual noise or distortions during evaluation.**  
+                    - **Only assess whether the image correctly represents the original prompt.**   
+
+                    ---
+
+                    ### **Example 1**  
+
+                    #### **Original User Prompt:**  
+                    *"An angry white dog next to a cute orange cat on a grassy hill at sunset."*  
+
+                    **Analysis of Latent Image at Step 75:**
+                    - The "angry white dog" is faintly discernible but lacks clear definition or features. It appears to blend into the background.
+                    - The "cute orange cat" is indistinct, with no visible form or features, and might not be present at all.
+                    - The grassy hill is visible but lacks texture and detail.
+                    - The sunset lighting is absent, and the colors seem scattered without a clear gradient or sunset tones.
+                    - Overall, the image lacks clarity, structure, and the contrast needed to align with the original prompt.
+
+                    DECISION: "False"
+                    REFINED PROMPT: *"An angry white dog with sharp features, standing next to a cute orange cat with large, expressive eyes on a textured grassy hill. The scene is illuminated by a vibrant sunset, with warm orange and pink hues filling the sky. The hill should have visible blades of grass, and the subjects should be sharply detailed with realistic textures."*  
+                    ---
+
+                    ### **Example 2:**  
+                    #### **Original User Prompt:**  
+                    *"A photo of four handbags."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Correct Object Count**: There are **exactly four handbags** visible in the image.  
+                    - **Handbag Shape & Features**: Each handbag has clearly defined straps, zippers, or clasps, making them identifiable.  
+                    - **Distinct Separation**: The handbags are positioned separately and do not merge into a single indistinct shape.  
+                    - **Balanced Composition**: The handbags are evenly arranged in the frame, ensuring they are all fully visible.  
+                    - **Ignored Factors**: Minor texture inconsistencies, lighting variations, or reflections **do not impact the evaluation**.  
+
+                    DECISION: "True"
+                    REFINED PROMPT: *"A well-lit, high-resolution photo featuring four distinct handbags arranged neatly on a flat surface. Each handbag has visible straps, metallic clasps, and a structured shape. The handbags should be evenly spaced, ensuring all four are fully visible without overlapping. The background should be neutral and unobtrusive to keep the focus on the handbags."*  
+                    ---
+
+                    ### **Example 3**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a toothbrush and a snowboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: The toothbrush is clearly visible, but the snowboard is faint and partially obscured.  
+                    - **Size Discrepancy**: The snowboard appears disproportionately small compared to the toothbrush.  
+                    - **Object Positioning**: The toothbrush is centered, but the snowboard is placed awkwardly in the background, making it difficult to recognize.  
+                    - **Texture Issue**: The snowboard lacks the glossy surface and defined edges typical of a snowboard.  
+
+                    DECISION: "False"  
+                    REFINED PROMPT: *"A high-quality photo of a toothbrush and a snowboard, both clearly visible and well-defined. The toothbrush should have a clean, ergonomic design with visible bristles and a smooth plastic handle. The snowboard should be large, with a sleek, glossy surface and distinctive graphics or branding. The two objects should be positioned naturally, with the toothbrush placed in the foreground and the snowboard fully visible in the background, ensuring proper scale and separation. The background should be neutral to avoid distraction while keeping both objects in sharp focus."*  
+
+                    ---
+
+                    ### **Example 4**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a horse and a computer keyboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: Both the horse and the keyboard are clearly visible.  
+                    - **Size & Perspective**: The horse appears large and well-proportioned, while the keyboard maintains a realistic size.  
+                    - **Detail Accuracy**: The horse has a well-defined mane, muscular structure, and natural fur texture. The keyboard has visible keys with realistic spacing.  
+                    - **Positioning**: The horse is placed in the background, and the keyboard is in the foreground, ensuring both objects remain distinguishable.  
+
+                    DECISION: "True"  
+                    REFINED PROMPT: *"A well-composed photo featuring a fully visible horse in the background and a computer keyboard in the foreground. The horse should be detailed, with a flowing mane, visible musculature, and natural fur texture. The keyboard should be modern, with clearly defined keys and a structured layout. The scene should have a neutral backdrop to enhance clarity and avoid blending, ensuring both objects are distinct while maintaining natural proportions and realistic lighting."*                      
+                    ---
+                    
+                    ### **Decision Process:**  
+                    1. If the **image represents the {original_prompt} prompt**, output:  
+                    
+                    DECISION: "True"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    2. If the **image does not represent the prompt at all or has inconsistencies**, output:  
+                    DECISION: "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    Note: Strictly follow the output format mentioned below.
+                    DECISION: "True" or "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+                    """}
+                ],
+            }
+        ]
+    elif tag == "single_object3":
+        # Example: Add specific instructions for multi-object prompts
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": f"file://{latent_image_path}"},
+                    {"type": "text", "text": f"""
+                    ### Evaluation Task:
+                    You are an **Image Refinement Assistant**. Your job is to check for **image-prompt correctness** and refine the prompt ONLY. 
+
+                    ### **Given Inputs:**  
+                    1. **Original User Prompt:**  
+                    - {original_prompt}  
+
+                    2. **Look at what is within the latent image:**  
+                    - <You have to Describe what the generated image looks like>  
+                    - <List any specific issues, inconsistencies, or missing details with respect to the {original_prompt}>   
+
+                    - **Do not check for image quality (e.g., sharpness, noise, lighting artifacts).**  
+                    - **Ignore visual noise or distortions during evaluation.**  
+                    - **Only assess whether the image correctly represents the original prompt.**   
+
+                    ---
+
+                    ### **Example 1**  
+
+                    #### **Original User Prompt:**  
+                    *"An angry white dog next to a cute orange cat on a grassy hill at sunset."*  
+
+                    **Analysis of Latent Image at Step 75:**
+                    - The "angry white dog" is faintly discernible but lacks clear definition or features. It appears to blend into the background.
+                    - The "cute orange cat" is indistinct, with no visible form or features, and might not be present at all.
+                    - The grassy hill is visible but lacks texture and detail.
+                    - The sunset lighting is absent, and the colors seem scattered without a clear gradient or sunset tones.
+                    - Overall, the image lacks clarity, structure, and the contrast needed to align with the original prompt.
+
+                    DECISION: "False"
+                    REFINED PROMPT: *"An angry white dog with sharp features, standing next to a cute orange cat with large, expressive eyes on a textured grassy hill. The scene is illuminated by a vibrant sunset, with warm orange and pink hues filling the sky. The hill should have visible blades of grass, and the subjects should be sharply detailed with realistic textures."*  
+                    ---
+
+                    ### **Example 2:**  
+                    #### **Original User Prompt:**  
+                    *"A photo of four handbags."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Correct Object Count**: There are **exactly four handbags** visible in the image.  
+                    - **Handbag Shape & Features**: Each handbag has clearly defined straps, zippers, or clasps, making them identifiable.  
+                    - **Distinct Separation**: The handbags are positioned separately and do not merge into a single indistinct shape.  
+                    - **Balanced Composition**: The handbags are evenly arranged in the frame, ensuring they are all fully visible.  
+                    - **Ignored Factors**: Minor texture inconsistencies, lighting variations, or reflections **do not impact the evaluation**.  
+
+                    DECISION: "True"
+                    REFINED PROMPT: *"A well-lit, high-resolution photo featuring four distinct handbags arranged neatly on a flat surface. Each handbag has visible straps, metallic clasps, and a structured shape. The handbags should be evenly spaced, ensuring all four are fully visible without overlapping. The background should be neutral and unobtrusive to keep the focus on the handbags."*  
+                    ---
+
+                    ### **Example 3**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a toothbrush and a snowboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: The toothbrush is clearly visible, but the snowboard is faint and partially obscured.  
+                    - **Size Discrepancy**: The snowboard appears disproportionately small compared to the toothbrush.  
+                    - **Object Positioning**: The toothbrush is centered, but the snowboard is placed awkwardly in the background, making it difficult to recognize.  
+                    - **Texture Issue**: The snowboard lacks the glossy surface and defined edges typical of a snowboard.  
+
+                    DECISION: "False"  
+                    REFINED PROMPT: *"A high-quality photo of a toothbrush and a snowboard, both clearly visible and well-defined. The toothbrush should have a clean, ergonomic design with visible bristles and a smooth plastic handle. The snowboard should be large, with a sleek, glossy surface and distinctive graphics or branding. The two objects should be positioned naturally, with the toothbrush placed in the foreground and the snowboard fully visible in the background, ensuring proper scale and separation. The background should be neutral to avoid distraction while keeping both objects in sharp focus."*  
+
+                    ---
+
+                    ### **Example 4**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a horse and a computer keyboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: Both the horse and the keyboard are clearly visible.  
+                    - **Size & Perspective**: The horse appears large and well-proportioned, while the keyboard maintains a realistic size.  
+                    - **Detail Accuracy**: The horse has a well-defined mane, muscular structure, and natural fur texture. The keyboard has visible keys with realistic spacing.  
+                    - **Positioning**: The horse is placed in the background, and the keyboard is in the foreground, ensuring both objects remain distinguishable.  
+
+                    DECISION: "True"  
+                    REFINED PROMPT: *"A well-composed photo featuring a fully visible horse in the background and a computer keyboard in the foreground. The horse should be detailed, with a flowing mane, visible musculature, and natural fur texture. The keyboard should be modern, with clearly defined keys and a structured layout. The scene should have a neutral backdrop to enhance clarity and avoid blending, ensuring both objects are distinct while maintaining natural proportions and realistic lighting."*                      
+                    ---
+                    
+                    ### **Decision Process:**  
+                    1. If the **image represents the {original_prompt} prompt**, output:  
+                    
+                    DECISION: "True"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    2. If the **image does not represent the prompt at all or has inconsistencies**, output:  
+                    DECISION: "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    Note: Strictly follow the output format mentioned below.
+                    DECISION: "True" or "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+                    """}
+                ],
+            }
+        ]
+    elif tag == "single_object4":
+        # Example: Add specific instructions for multi-object prompts
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": f"file://{latent_image_path}"},
+                    {"type": "text", "text": f"""
+                    ### Evaluation Task:
+                    You are an **Image Refinement Assistant**. Your job is to check for **image-prompt correctness** and refine the prompt ONLY. 
+
+                    ### **Given Inputs:**  
+                    1. **Original User Prompt:**  
+                    - {original_prompt}  
+
+                    2. **Look at what is within the latent image:**  
+                    - <You have to Describe what the generated image looks like>  
+                    - <List any specific issues, inconsistencies, or missing details with respect to the {original_prompt}>   
+
+                    - **Do not check for image quality (e.g., sharpness, noise, lighting artifacts).**  
+                    - **Ignore visual noise or distortions during evaluation.**  
+                    - **Only assess whether the image correctly represents the original prompt.**   
+
+                    ---
+
+                    ### **Example 1**  
+
+                    #### **Original User Prompt:**  
+                    *"An angry white dog next to a cute orange cat on a grassy hill at sunset."*  
+
+                    **Analysis of Latent Image at Step 75:**
+                    - The "angry white dog" is faintly discernible but lacks clear definition or features. It appears to blend into the background.
+                    - The "cute orange cat" is indistinct, with no visible form or features, and might not be present at all.
+                    - The grassy hill is visible but lacks texture and detail.
+                    - The sunset lighting is absent, and the colors seem scattered without a clear gradient or sunset tones.
+                    - Overall, the image lacks clarity, structure, and the contrast needed to align with the original prompt.
+
+                    DECISION: "False"
+                    REFINED PROMPT: *"An angry white dog with sharp features, standing next to a cute orange cat with large, expressive eyes on a textured grassy hill. The scene is illuminated by a vibrant sunset, with warm orange and pink hues filling the sky. The hill should have visible blades of grass, and the subjects should be sharply detailed with realistic textures."*  
+                    ---
+
+                    ### **Example 2:**  
+                    #### **Original User Prompt:**  
+                    *"A photo of four handbags."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Correct Object Count**: There are **exactly four handbags** visible in the image.  
+                    - **Handbag Shape & Features**: Each handbag has clearly defined straps, zippers, or clasps, making them identifiable.  
+                    - **Distinct Separation**: The handbags are positioned separately and do not merge into a single indistinct shape.  
+                    - **Balanced Composition**: The handbags are evenly arranged in the frame, ensuring they are all fully visible.  
+                    - **Ignored Factors**: Minor texture inconsistencies, lighting variations, or reflections **do not impact the evaluation**.  
+
+                    DECISION: "True"
+                    REFINED PROMPT: *"A well-lit, high-resolution photo featuring four distinct handbags arranged neatly on a flat surface. Each handbag has visible straps, metallic clasps, and a structured shape. The handbags should be evenly spaced, ensuring all four are fully visible without overlapping. The background should be neutral and unobtrusive to keep the focus on the handbags."*  
+                    ---
+
+                    ### **Example 3**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a toothbrush and a snowboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: The toothbrush is clearly visible, but the snowboard is faint and partially obscured.  
+                    - **Size Discrepancy**: The snowboard appears disproportionately small compared to the toothbrush.  
+                    - **Object Positioning**: The toothbrush is centered, but the snowboard is placed awkwardly in the background, making it difficult to recognize.  
+                    - **Texture Issue**: The snowboard lacks the glossy surface and defined edges typical of a snowboard.  
+
+                    DECISION: "False"  
+                    REFINED PROMPT: *"A high-quality photo of a toothbrush and a snowboard, both clearly visible and well-defined. The toothbrush should have a clean, ergonomic design with visible bristles and a smooth plastic handle. The snowboard should be large, with a sleek, glossy surface and distinctive graphics or branding. The two objects should be positioned naturally, with the toothbrush placed in the foreground and the snowboard fully visible in the background, ensuring proper scale and separation. The background should be neutral to avoid distraction while keeping both objects in sharp focus."*  
+
+                    ---
+
+                    ### **Example 4**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a horse and a computer keyboard."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: Both the horse and the keyboard are clearly visible.  
+                    - **Size & Perspective**: The horse appears large and well-proportioned, while the keyboard maintains a realistic size.  
+                    - **Detail Accuracy**: The horse has a well-defined mane, muscular structure, and natural fur texture. The keyboard has visible keys with realistic spacing.  
+                    - **Positioning**: The horse is placed in the background, and the keyboard is in the foreground, ensuring both objects remain distinguishable.  
+
+                    DECISION: "True"  
+                    REFINED PROMPT: *"A well-composed photo featuring a fully visible horse in the background and a computer keyboard in the foreground. The horse should be detailed, with a flowing mane, visible musculature, and natural fur texture. The keyboard should be modern, with clearly defined keys and a structured layout. The scene should have a neutral backdrop to enhance clarity and avoid blending, ensuring both objects are distinct while maintaining natural proportions and realistic lighting."*                      
+                    ---
+                    
+                    ### **Decision Process:**  
+                    1. If the **image represents the {original_prompt} prompt**, output:  
+                    
+                    DECISION: "True"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    2. If the **image does not represent the prompt at all or has inconsistencies**, output:  
+                    DECISION: "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    Note: Strictly follow the output format mentioned below.
+                    DECISION: "True" or "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+                    """}
+                ],
+            }
+        ]
+    elif tag == "position2":
+        # Example: Add specific instructions for multi-object prompts
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": f"file://{latent_image_path}"},
+                    {"type": "text", "text": f"""
+                    ### Evaluation Task:
+                    You are an **Image Refinement Assistant**. Your job is to check for **image-prompt correctness** and refine the prompt ONLY. 
+
+                    ### **Given Inputs:**  
+                    1. **Original User Prompt:**  
+                    - {original_prompt}  
+
+                    2. **Look at what is within the latent image:**  
+                    - <You have to Describe what the generated image looks like>  
+                    - <List any specific issues, inconsistencies, or missing details with respect to the {original_prompt}>   
+
+                    - **Do not check for image quality (e.g., sharpness, noise, lighting artifacts).**  
+                    - **Ignore visual noise or distortions during evaluation.**  
+                    - **Only assess whether the image correctly represents the original prompt.**   
+
+                    ---
+
+                    ### **Example 1**  
+
+                    #### **Original User Prompt:**  
+                    *"A fluffy gray rabbit with long ears wearing a tiny blue scarf."*  
+
+                    **Analysis of Latent Image at Step 75:**
+                    - Scarf Issue: The tiny blue scarf is not clearly visible or might be missing entirely.
+                    - Fur Detail: The rabbit's fluffy fur is prominent, but it lacks clarity and fine detail, appearing overly textured or noisy.
+                    - Background: The backdrop is a plain blue-gray color with minimal variation, which feels flat and unengaging.
+                    - Rabbit Clarity: The rabbit’s form is discernible but slightly distorted, especially around the ears and face.
+
+                    DECISION: "False"  
+                    REFINED PROMPT: *"A highly detailed and fluffy gray rabbit with long, upright ears wearing a tiny, vibrant blue scarf wrapped around its neck. The rabbit should have soft, realistic fur texture and clear, expressive facial features. The background should be a softly blurred gradient of blue and gray tones, creating a serene atmosphere that highlights the rabbit as the focal point."*              
+                    
+                    ---
+
+                    ### **Example 2**  
+
+                    #### **Original User Prompt:**  
+                    *"An angry white dog next to a cute orange cat on a grassy hill at sunset."*  
+
+                    **Analysis of Latent Image at Step 75:**
+                    - The "angry white dog" is faintly discernible but lacks clear definition or features. It appears to blend into the background.
+                    - The "cute orange cat" is indistinct, with no visible form or features, and might not be present at all.
+                    - The grassy hill is visible but lacks texture and detail.
+                    - The sunset lighting is absent, and the colors seem scattered without a clear gradient or sunset tones.
+                    - Overall, the image lacks clarity, structure, and the contrast needed to align with the original prompt.
+
+                    DECISION: "False"
+                    REFINED PROMPT: *"An angry white dog with sharp features, standing next to a cute orange cat with large, expressive eyes on a textured grassy hill. The scene is illuminated by a vibrant sunset, with warm orange and pink hues filling the sky. The hill should have visible blades of grass, and the subjects should be sharply detailed with realistic textures."*  
+                    
+                    ---
+
+                    ### **Example 3**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a dog to the right of a teddy bear."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: Both the dog and the teddy bear are clearly visible.  
+                    - **Positioning Accuracy**: The dog is correctly placed to the right of the teddy bear, maintaining the intended spatial relationship.  
+                    - **Detail & Clarity**: The dog has well-defined fur texture, expressive eyes, and a natural pose. The teddy bear has a soft, plush appearance with visible stitching and fabric texture.  
+                    - **Background & Framing**: The scene is well-balanced, ensuring both objects remain clearly visible without overlap.  
+
+                    DECISION: "True"  
+                    REFINED PROMPT: *"A well-framed photo of a dog positioned to the right of a teddy bear. The dog should have natural fur texture, expressive eyes, and a relaxed sitting or standing posture. The teddy bear should appear soft and plush, with detailed stitching and a well-defined fabric surface. The spatial arrangement should be clear, ensuring the dog is distinctly positioned to the right of the teddy bear, with proper separation and visibility. The background should be softly blurred to maintain focus on both subjects."*  
+
+                    ---
+
+                    ### **Example 4**  
+
+                    #### **Original User Prompt:**  
+                    *"A photo of a bus below a toothbrush."*  
+
+                    **Analysis of Latent Image at Step 75:**  
+                    - **Object Presence**: Both the bus and toothbrush are visible.  
+                    - **Incorrect Positioning**: The bus is placed next to or above the toothbrush rather than below it.  
+                    - **Size & Proportion**: The toothbrush appears disproportionately large compared to the bus, making the spatial relationship unclear.  
+                    - **Scene Composition**: The objects appear disconnected rather than forming a cohesive arrangement.  
+
+                    DECISION: "False"  
+                    REFINED PROMPT: *"A well-structured photo of a bus positioned clearly below a toothbrush. The bus should be realistically sized, maintaining its natural proportions and details such as windows, headlights, and doors. The toothbrush should be placed above the bus, appearing appropriately scaled with visible bristles and an ergonomic handle. The background should provide a neutral setting, ensuring the spatial positioning remains clear and easily distinguishable."*                                          
+                                        
+                    ---
+                    
+                    ### **Decision Process:**  
+                    1. If the **image represents the {original_prompt} prompt**, output:  
+                    
+                    DECISION: "True"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    2. If the **image does not represent the prompt at all or has inconsistencies**, output:  
+                    DECISION: "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+
+                    Note: Strictly follow the output format mentioned below.
+                    DECISION: "True" or "False"
+                    REFINED PROMPT: "<Your improved single prompt here>"
+                    """}
+                ],
+            }
+        ]
     elif tag == "counting":
         # Example: Add specific instructions for multi-object prompts
         messages = [
