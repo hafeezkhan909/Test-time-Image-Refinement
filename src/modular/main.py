@@ -29,14 +29,14 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="new_outputs/20100_1.5_vanilla",
+        default="new_outputs/20100_1.5_drawbench",
         help="Directory to save outputs"
     )
     parser.add_argument(
         "--restart_steps",
         type=int,
         nargs="+",
-        default=[],
+        default=[20, 10, 0],
         help="List of restart steps (e.g., --restart_steps 25 10 0)"
     )
     parser.add_argument(
@@ -121,10 +121,11 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
             adjusted_refinement_step = math.floor(refinement_step * (remaining_steps / 100))
 
             if i == 0: 
-                prev_step_image = os.path.join(prompt_output_dir, f"final_image.png")
+                # prev_step_image = os.path.join(prompt_output_dir, f"final_image.png") # if using final image
+                prev_step_image = os.path.join(prompt_output_dir, f"imagestep_{refinement_step}.png") # if using final image
             else:
                 prev_restart_step = restart_steps[i - 1]  # Get the previous restart step
-                prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png")
+                prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png") # if using final image
                 # prev_step_image = os.path.join(prompt_output_dir, f"{i}_refined_{prev_restart_step}_final_image.png") # Use this when running multiple 0's
 
             full_output = get_refined_prompt(current_prompt, prev_step_image, tag)
