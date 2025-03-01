@@ -45,16 +45,32 @@ with open(args.prompt_json, "r") as f:
 
 # Compute scores for each image
 image_reward_scores = {}
+raw_scores = []
+
 for image_name in os.listdir(args.image_folder):
     if image_name.endswith(('.png', '.jpg', '.jpeg', '.webp')):
         image_path = os.path.join(args.image_folder, image_name)
         prompt = prompts.get(image_name, "No prompt available")
         score = model.score(prompt, image_path)
         image_reward_scores[image_name] = score
+        raw_scores.append(score)
 
-# Save ImageReward results
+# Normalize scores to [0,1] range using Min-Max Scaling
+min_score = min(raw_scores)
+max_score = max(raw_scores)
+
+if max_score - min_score > 0:  # Avoid division by zero
+    normalized_scores = {
+        img: (score - min_score) / (max_score - min_score)
+        for img, score in image_reward_scores.items()
+    }
+else:
+    # If all scores are the same, set them to 0.5 to avoid division issues
+    normalized_scores = {img: 0.5 for img in image_reward_scores}
+
+# Save results
 with open(image_reward_output, "w") as f:
-    json.dump(image_reward_scores, f, indent=4)
+    json.dump(normalized_scores, f, indent=4)
 
 print(f"✅ ImageReward results saved at `{image_reward_output}`")
 
