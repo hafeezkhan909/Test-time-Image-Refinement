@@ -1,7 +1,7 @@
 import os
 import json
 import argparse
-import requests
+import httpx
 from io import BytesIO
 import base64
 from PIL import Image
@@ -10,14 +10,35 @@ import shutil
 import random
 import math
 # Choose one of these imports based on your preference
-from qwen_integration import get_refined_prompt
-# from aoai import get_refined_prompt
+# from qwen_integration import get_refined_prompt
+from aoai import get_refined_prompt
 
-# Initialize OpenAI client
-from openai import OpenAI
-api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key)
-dalle_model = os.getenv("DALLE_MODEL", "dall-e-3")
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from openai import AzureOpenAI
+
+# Initialize Azure OpenAI client
+# client = AzureOpenAI(
+#     api_version="2024-05-01-preview",
+#     azure_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', "https://dalle-exploration.openai.azure.com/"),
+#     credential=DefaultAzureCredential()
+# )
+
+endpoint = os.getenv("ENDPOINT_URL", "https://dalle-exploration.openai.azure.com/")  
+
+# Initialize Azure OpenAI Service client with Entra ID authentication
+token_provider = get_bearer_token_provider(  
+    DefaultAzureCredential(),  
+    "https://cognitiveservices.azure.com/.default"  
+)  
+  
+client = AzureOpenAI(  
+    azure_endpoint=endpoint,  
+    azure_ad_token_provider=token_provider,  
+    api_version="2024-05-01-preview",  
+)
+
+
+dalle_model = os.environ.get("DALLE_MODEL", "dalle3")
 
 # ======================== #
 # 🔹 Argument Parsing
@@ -106,7 +127,7 @@ def generate_image_dalle(prompt, output_path, size="1024x1024", quality="standar
         
     try:
         # Generate image using DALL-E
-        response = client.images.generate(
+        result = client.images.generate(
             model=dalle_model,
             prompt=prompt,
             size=size,
@@ -116,15 +137,16 @@ def generate_image_dalle(prompt, output_path, size="1024x1024", quality="standar
         )
         
         # Extract image URL from response
-        image_url = response.data[0].url
+        json_response = json.loads(result.model_dump_json())
+        image_url = json_response["data"][0]["url"]
         
         # Download the image
-        image_response = requests.get(image_url)
-        image = Image.open(BytesIO(image_response.content))
+        generated_image = httpx.get(image_url).content
         
         # Save the image
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        image.save(output_path)
+        with open(output_path, "wb") as image_file:
+            image_file.write(generated_image)
         
         print(f"✅ Image saved to {output_path}")
         # Add a small delay to avoid rate limiting
@@ -201,7 +223,7 @@ def process_tag(tag, prompts, output_dir, refinement_iterations, size, quality):
                 es_final_path = os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")
                 if not check_image_exists(es_final_path):
                     shutil.copy(prev_image_path, es_final_path)
-                break
+                # Removed the break statement to continue generating images
             
             # Generate new image with refined prompt
             if not check_image_exists(refined_image_path):
