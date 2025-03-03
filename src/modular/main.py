@@ -4,6 +4,7 @@ import torch
 import argparse
 from diffusion.pipeline import generate_image
 from qwen_integration import get_refined_prompt
+# from aoai import get_refined_prompt  # instead of from qwen_integration import get_refined_prompt
 from diffusion.refine import refine_image
 import random
 import math
@@ -76,6 +77,10 @@ def move_files(file_map):
         if os.path.exists(src):
             os.rename(src, dest)
 
+def check_image_exists(filepath):
+    """Check if an image already exists at the given path."""
+    return os.path.exists(filepath)
+
 # ======================== #
 # 🔹 Tag-Specific Logic
 # ======================== #
@@ -84,8 +89,11 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
     print(f"\n🔹 Processing tag: {tag}")
     tag_output_dir = os.path.join(output_dir, tag)
     os.makedirs(tag_output_dir, exist_ok=True)
-
+    cnt = 0
     for prompt_data in prompts:
+        # cnt += 1
+        # if cnt == 5:
+        #     break
         prompt = prompt_data["prompt"]
         line_number = prompt_data["line_number"]  # Get the line number
         print(f"\n🚀 Processing Prompt {line_number} for tag {tag}:\n{prompt}")
@@ -98,24 +106,38 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
         # ----------------------- #
         # 🔹 Step 1: Initial Image Generation (Step 0 → Step 100)
         # ----------------------- #
-        generator_seed_1 = 42
-        generator_seed_1, latents_dict = generate_image(
-            prompt, 
-            generator_seed=generator_seed_1, 
-            save_intermediate_steps=True,
-            output_dir=prompt_output_dir,
-            model_version=model_version,
-            restart_steps=restart_steps,
-            prefix="image",
-            refinement_step=refinement_step
-        )
+        final_image_path = os.path.join(prompt_output_dir, "final_image.png")
+        refinement_image_path = os.path.join(prompt_output_dir, f"imagestep_{refinement_step}.png")
+        
+        if check_image_exists(final_image_path) and check_image_exists(refinement_image_path):
+            print(f"✅ Initial image already exists for prompt {line_number}. Skipping generation.")
+            # We need to load the latents_dict if it exists
+            latents_dict = {}
+            for step in restart_steps:
+                latent_path = os.path.join(prompt_output_dir, f"latents_{step}.pt")
+                if os.path.exists(latent_path):
+                    latents_dict[step] = torch.load(latent_path)
+            generator_seed_1 = 42  # Default seed
+        else:
+            generator_seed_1 = 42
+            generator_seed_1, latents_dict = generate_image(
+                prompt, 
+                generator_seed=generator_seed_1, 
+                save_intermediate_steps=True,
+                output_dir=prompt_output_dir,
+                model_version=model_version,
+                restart_steps=restart_steps,
+                prefix="image",
+                refinement_step=refinement_step
+            )
 
         # ========================== #
         # 🔹 Refinement Loop
         # ========================== #
         current_prompt = prompt
+        prompt_history = []  # Track prompt history
+        
         for i, restart_step in enumerate(restart_steps):
-
             # Compute adjusted refinement step
             remaining_steps = 100 - restart_step
             adjusted_refinement_step = math.floor(refinement_step * (remaining_steps / 100))
@@ -128,28 +150,53 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                 prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png") # if using final image
                 # prev_step_image = os.path.join(prompt_output_dir, f"{i}_refined_{prev_restart_step}_final_image.png") # Use this when running multiple 0's
 
-            full_output = get_refined_prompt(current_prompt, prev_step_image, tag)
-            decision, refined_prompt = parse_qwen_output(full_output)
+            # Check if refined prompt already exists and load it if it does
+            refined_prompt_path = os.path.join(prompt_output_dir, f"{i}_refined_prompt_{restart_step}.txt")
+            if check_image_exists(refined_prompt_path):
+                print(f"✅ Refined prompt for step {restart_step} already exists. Loading from file.")
+                with open(refined_prompt_path, "r") as f:
+                    full_output = f.read()
+                decision, refined_prompt = parse_qwen_output(full_output)
+            else:
+                # Pass the original prompt and history to get_refined_prompt
+                full_output = get_refined_prompt(prompt, prev_step_image, tag, prompt_history)
+                decision, refined_prompt = parse_qwen_output(full_output)
+                # Save refined prompt
+                with open(refined_prompt_path, "w") as f:
+                    f.write(full_output)
+                    
             print(f"✅ Refining further: Refined Prompt for Step {restart_step}: {refined_prompt}")
             
-            # Save refined prompt
-            with open(os.path.join(prompt_output_dir, f"{i}_refined_prompt_{restart_step}.txt"), "w") as f:
-                f.write(full_output)
-
+            # Add current refinement to history
+            prompt_history.append(refined_prompt)
+            
             if i == 0:
-              if decision == "True":
+                if decision == "True":
                     print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
-                    shutil.copy(os.path.join(prompt_output_dir, "final_image.png"), os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png"))
+                    es_final_path = os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")
+                    if not check_image_exists(es_final_path):
+                        shutil.copy(os.path.join(prompt_output_dir, "final_image.png"), es_final_path)
             else:
                 if decision == "True":
                     print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
-                    shutil.copy(os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png"), os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png"))
+                    es_final_path = os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")
+                    prev_final_path = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png")
+                    if not check_image_exists(es_final_path) and check_image_exists(prev_final_path):
+                        shutil.copy(prev_final_path, es_final_path)
 
-            # current_prompt = refined_prompt
+            # Check if refined image already exists
+            refined_image_path = ""
+            if restart_step == 0:
+                refined_image_path = os.path.join(prompt_output_dir, f"{i+1}_refined_{restart_step}_final_image.png")
+            else:
+                refined_image_path = os.path.join(prompt_output_dir, f"final_{i+1}_refined_{restart_step}_.png")
+                
+            if check_image_exists(refined_image_path):
+                print(f"✅ Refined image for step {restart_step} already exists. Skipping generation.")
+                continue
 
             # Restart generation (either from 0 or using refinement)
             if restart_step == 0:
-
                 generator_seed_2 = 42
                 generate_image(
                     refined_prompt, 
@@ -185,7 +232,13 @@ def main():
     grouped_prompts = load_prompts(args.prompts_file)
 
     # Process each tag separately
+    cnt = 0
     for tag, prompts in grouped_prompts.items():
+        cnt += 1 
+        # if cnt not in [3,4,5,6]:
+        #     process_tag(tag, prompts, args.output_dir, args.model_version, args.restart_steps, args.refinement_step)
+        # else:
+        #     continue
         process_tag(tag, prompts, args.output_dir, args.model_version, args.restart_steps, args.refinement_step)
 
     print("\n✅ Batch Processing Complete for all tags!")
