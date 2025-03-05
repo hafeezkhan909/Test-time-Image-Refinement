@@ -1,11 +1,11 @@
 {
     "200": {
         "objects": [
-            "cup",
-            "backpack"
+            "cat",
+            "sports ball"
         ], 
         "relationships": [
-            "backpack is to the left of cup"
+            "cat is to the left of sports ball"
         ]
     },
     "201": {
