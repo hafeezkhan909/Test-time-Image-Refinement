@@ -1,0 +1,62 @@
+{
+    "1": {
+        "object": "laptop"
+    },
+    "2": {
+        "object": "handbag"
+    },
+    "3": {
+        "object": "fire hydrant"
+    },
+    "4": {
+        "object": "couch"
+    },
+    "5": {
+        "object": "sports ball"
+    },
+    "6": {
+        "object": "bench"
+    },
+    "7": {
+        "object": "apple"
+    },
+    "8": {
+        "object": "horse"
+    },
+    "9": {
+        "object": "birds"
+    },
+    "10": {
+        "object": "car"
+    },
+    "11": {
+        "object": "backpack"
+    },
+    "12": {
+        "object": "cup"
+    },
+    "13": {
+        "object": "clock"
+    },
+    "14": {
+        "object": "frisbee"
+    },
+    "15": {
+        "object": "cat"
+    },
+    "16": {
+        "object": "dog"
+    },
+    "17": {
+        "object": "bottle"
+    },
+    "18": {
+        "object": "teddy bear"
+    },
+    "19": {
+        "object": "banana"
+    },
+    "20": {
+        "object": "bicycle"
+    }
+}
