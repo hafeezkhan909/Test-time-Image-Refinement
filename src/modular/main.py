@@ -4,13 +4,12 @@ import torch
 import argparse
 from diffusion.pipeline import generate_image
 from qwen_integration import get_refined_prompt
-# from aoai import get_refined_prompt  # instead of from qwen_integration import get_refined_prompt
 from diffusion.refine import refine_image
-import random
 import math
 import shutil
+
 # ======================== #
-# 🔹 Argument Parsing
+#    Argument Parsing
 # ======================== #
 def parse_args():
     parser = argparse.ArgumentParser(description="Run the diffusion pipeline with user-defined restart points.")
@@ -30,26 +29,26 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="new_outputs/20100_1.5_drawbench",
-        help="Directory to save outputs"
+        default="test/test",
+        help="Directory to save outputs (default: test/test)"
     )
     parser.add_argument(
         "--restart_steps",
         type=int,
         nargs="+",
-        default=[20, 10, 0],
-        help="List of restart steps (e.g., --restart_steps 25 10 0)"
+        default=[0, 0, 0],
+        help="List of restart steps (default: 0 0 0)"
     )
     parser.add_argument(
         "--refinement_step",
         type=int,
         default=99,
-        help="Step at which to take feedback from Qwen (default: 75)"
+        help="Step at which to take feedback from Qwen (default: 99)"
     )
     return parser.parse_args()
 
 # ======================== #
-# 🔹 Utility Functions
+#    Utility Functions
 # ======================== #
 def load_prompts(file_path):
     """Loads prompts from JSON file grouped by tag."""
@@ -82,18 +81,16 @@ def check_image_exists(filepath):
     return os.path.exists(filepath)
 
 # ======================== #
-# 🔹 Tag-Specific Logic
+#    Tag-Specific Logic
 # ======================== #
 def process_tag(tag, prompts, output_dir, model_version, restart_steps, refinement_step):
     """Process all prompts for a specific tag."""
-    print(f"\n🔹 Processing tag: {tag}")
+    print(f"\n   Processing tag: {tag}")
     tag_output_dir = os.path.join(output_dir, tag)
     os.makedirs(tag_output_dir, exist_ok=True)
     cnt = 0
     for prompt_data in prompts:
-        # cnt += 1
-        # if cnt == 5:
-        #     break
+
         prompt = prompt_data["prompt"]
         line_number = prompt_data["line_number"]  # Get the line number
         print(f"\n🚀 Processing Prompt {line_number} for tag {tag}:\n{prompt}")
@@ -104,7 +101,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
         os.makedirs(prompt_output_dir, exist_ok=True)
 
         # ----------------------- #
-        # 🔹 Step 1: Initial Image Generation (Step 0 → Step 100)
+        #    Step 1: Initial Image Generation (Step 0 → Step 100)
         # ----------------------- #
         final_image_path = os.path.join(prompt_output_dir, "final_image.png")
         refinement_image_path = os.path.join(prompt_output_dir, f"imagestep_{refinement_step}.png")
@@ -132,9 +129,8 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
             )
 
         # ========================== #
-        # 🔹 Refinement Loop
+        #    Refinement Loop
         # ========================== #
-        current_prompt = prompt
         prompt_history = []  # Track prompt history
         
         for i, restart_step in enumerate(restart_steps):
@@ -153,7 +149,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
             # Check if refined prompt already exists and load it if it does
             refined_prompt_path = os.path.join(prompt_output_dir, f"{i}_refined_prompt_{restart_step}.txt")
             if check_image_exists(refined_prompt_path):
-                print(f"✅ Refined prompt for step {restart_step} already exists. Loading from file.")
+                print(f"Refined prompt for step {restart_step} already exists. Loading from file.")
                 with open(refined_prompt_path, "r") as f:
                     full_output = f.read()
                 decision, refined_prompt = parse_qwen_output(full_output)
@@ -165,7 +161,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                 with open(refined_prompt_path, "w") as f:
                     f.write(full_output)
                     
-            print(f"✅ Refining further: Refined Prompt for Step {restart_step}: {refined_prompt}")
+            print(f"Refining further: Refined Prompt for Step {restart_step}: {refined_prompt}")
             
             # Add current refinement to history
             prompt_history.append(refined_prompt)
@@ -223,7 +219,7 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
     
 
 # ======================== #
-# 🔹 Main Pipeline
+#    Main Pipeline
 # ======================== #
 def main():
     args = parse_args()
@@ -232,13 +228,7 @@ def main():
     grouped_prompts = load_prompts(args.prompts_file)
 
     # Process each tag separately
-    cnt = 0
     for tag, prompts in grouped_prompts.items():
-        cnt += 1 
-        # if cnt not in [3,4,5,6]:
-        #     process_tag(tag, prompts, args.output_dir, args.model_version, args.restart_steps, args.refinement_step)
-        # else:
-        #     continue
         process_tag(tag, prompts, args.output_dir, args.model_version, args.restart_steps, args.refinement_step)
 
     print("\n✅ Batch Processing Complete for all tags!")
