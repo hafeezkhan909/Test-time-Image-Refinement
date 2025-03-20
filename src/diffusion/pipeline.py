@@ -7,7 +7,6 @@ from diffusion.config import DEVICE, HEIGHT, WIDTH, NUM_INFERENCE_STEPS, GUIDANC
 
 def generate_image(prompt, generator_seed, save_intermediate_steps=False, output_dir=None, prefix="", model_version=""):
     """Runs Stable Diffusion pipeline and saves images at different timesteps.
-       Also saves the latent state when the timestep equals 25.
     """
     vae, tokenizer, text_encoder, unet, scheduler = load_models(DEVICE, model_version=model_version)
     
