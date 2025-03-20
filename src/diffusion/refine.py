@@ -70,18 +70,9 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
     if start_idx is None:
         raise ValueError(f"Start timestep {start_timestep} not found in scheduler.timesteps.")
     
-    # Optionally define intermediate saving points. (Here we simply save the halfway point.)
+    # Optionally define intermediate saving points.
     if save_intermediate_steps:
         remaining_steps = len(scheduler.timesteps[start_idx:])
-        # For example, save at the middle of the remaining denoising process:
-        # save_steps = {22, 43, 64}
-
-    # save_steps = {38, 49, 57}
-
-    save_step_mapping = {
-    14: 15, 23: 25, 45: 50, 59: 65, 68: 75,  # Mapping for {14, 23, 45, 59, 68} → {15, 25, 50, 75}
-    38: 50, 49: 65, 57: 75  # Mapping for {38, 49, 57} → {50, 65, 75}
-    }
 
     # Continue the denoising loop starting from the provided latent state.
     remaining_timesteps = scheduler.timesteps[start_idx:]
@@ -120,17 +111,3 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
     # save_image(final_image, "final_refined_image.png", folder="outputs/refined_final")
 
     return final_image, latents
-
-# === Example usage in your main script ===
-
-if __name__ == "__main__":
-    # For example, assume that after running your first pipeline you saved the latent at t=25:
-    # torch.save(latents, "outputs/latent_t25.pt")
-    # init_latents = torch.load("outputs/5_latents/latent_t25_157618.pt")
-    init_latents = torch.load("outputs/latents/latent_t10_488226.pt")
-
-    # Define your refined prompt
-    REFINED_PROMPT = "A warm and cozy library with rich, textured wooden bookshelves filled with books. The scene should have soft, focused lighting from a reading lamp, creating a warm glow without harsh shadows. Ensure there are no windows in the room, emphasizing an enclosed, intimate atmosphere. The composition should be balanced and detailed, with the wooden textures and cozy lighting as prominent features."
-
-    # Run the refinement process from t=25 to t=100
-    final_image, refined_latents = refine_image(REFINED_PROMPT, init_latents, start_timestep=10, save_intermediate_steps=True)
