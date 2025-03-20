@@ -21,7 +21,7 @@ with open("filtered_prompts.json", "r") as f:
     prompt_data = json.load(f)
 
 SEED = 42
-swap_steps = [None, 24, 9, 0]  # Order of swaps
+swap_steps = [None, 0, 0, 0]  # Order of swaps
 
 def latents_to_pil(pipe, latents):
     with torch.no_grad():
@@ -39,7 +39,7 @@ def create_callback(pipe, swap_step, output_dir, swap_prompt=None):
         if latents is None:
             return callback_kwargs
 
-        save_steps = [96, 99]
+        save_steps = [99]
         
         if step_index in save_steps:
             unique_name = f"swap_at_{swap_step}_step_{step_index}" if swap_step is not None else f"swap_at_None_step_{step_index}"
@@ -119,8 +119,8 @@ for tag, prompts in prompt_data.items():
                     print(f"🔄 Renamed {old_path} to {new_path}")
 
             if idx < len(swap_steps) - 1:
-                step_96_image_path = os.path.join(output_dir, f"swap_at_{swap_step}_step_96.png")
-                full_output = get_refined_prompt(original_prompt, step_96_image_path, tag)
+                step_99_image_path = os.path.join(output_dir, f"swap_at_{swap_step}_step_99.png")
+                full_output = get_refined_prompt(original_prompt, step_99_image_path, tag)
                 decision, current_refined_prompt = parse_qwen_output(full_output)
                 print(f"\n🔄 Qwen refined prompt: {current_refined_prompt}")
                 print(f"✅ Qwen decision for {tag}/{prompt_id}, Swap at {swap_step}: {decision}")

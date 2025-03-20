@@ -5,19 +5,20 @@ import argparse
 from diffusion.pipeline import generate_image
 from qwen_integration import get_refined_prompt
 from diffusion.refine import refine_image
-import random
+import math
+import shutil
 
 # ======================== #
-# 🔹 Argument Parsing
+#    Argument Parsing
 # ======================== #
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run the diffusion pipeline with a specified model version.")
+    parser = argparse.ArgumentParser(description="Run the diffusion pipeline with user-defined restart points.")
     parser.add_argument(
         "--model_version",
         type=str,
-        default="1.4",
+        default="1.5",
         choices=["1.4", "1.5", "2.1"],
-        help="Stable Diffusion model version to use (default: 1.4)"
+        help="Stable Diffusion model version to use (default: 1.5)"
     )
     parser.add_argument(
         "--prompts_file",
@@ -28,13 +29,26 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="new_outputs/batch_results_2.1",
-        help="Directory to save outputs (default: new_outputs/batch_results_test)"
+        default="test/test",
+        help="Directory to save outputs (default: test/test)"
+    )
+    parser.add_argument(
+        "--restart_steps",
+        type=int,
+        nargs="+",
+        default=[0, 0, 0],
+        help="List of restart steps (default: 0 0 0)"
+    )
+    parser.add_argument(
+        "--refinement_step",
+        type=int,
+        default=99,
+        help="Step at which to take feedback from Qwen (default: 99)"
     )
     return parser.parse_args()
 
 # ======================== #
-# 🔹 Utility Functions
+#    Utility Functions
 # ======================== #
 def load_prompts(file_path):
     """Loads prompts from JSON file grouped by tag."""
@@ -62,16 +76,21 @@ def move_files(file_map):
         if os.path.exists(src):
             os.rename(src, dest)
 
+def check_image_exists(filepath):
+    """Check if an image already exists at the given path."""
+    return os.path.exists(filepath)
+
 # ======================== #
-# 🔹 Tag-Specific Logic
+#    Tag-Specific Logic
 # ======================== #
-def process_tag(tag, prompts, output_dir, model_version):
+def process_tag(tag, prompts, output_dir, model_version, restart_steps, refinement_step):
     """Process all prompts for a specific tag."""
-    print(f"\n🔹 Processing tag: {tag}")
+    print(f"\n   Processing tag: {tag}")
     tag_output_dir = os.path.join(output_dir, tag)
     os.makedirs(tag_output_dir, exist_ok=True)
-
+    cnt = 0
     for prompt_data in prompts:
+
         prompt = prompt_data["prompt"]
         line_number = prompt_data["line_number"]  # Get the line number
         print(f"\n🚀 Processing Prompt {line_number} for tag {tag}:\n{prompt}")
@@ -82,137 +101,125 @@ def process_tag(tag, prompts, output_dir, model_version):
         os.makedirs(prompt_output_dir, exist_ok=True)
 
         # ----------------------- #
-        # 🔹 Step 1: Initial Image Generation (Step 0 → Step 100)
+        #    Step 1: Initial Image Generation (Step 0 → Step 100)
         # ----------------------- #
-        generator_seed_1 = 42
-        generator_seed_1, latents_dict = generate_image(
-            prompt, 
-            generator_seed=generator_seed_1, 
-            save_intermediate_steps=True,
-            output_dir=prompt_output_dir,
-            model_version=model_version
-        )
+        final_image_path = os.path.join(prompt_output_dir, "final_image.png")
+        refinement_image_path = os.path.join(prompt_output_dir, f"imagestep_{refinement_step}.png")
         
-        # Append the generator seed to the prompt-specific seed file
-        seed_file = os.path.join(prompt_output_dir, "seed.txt")
-        with open(seed_file, "a") as f:
-            f.write(f"{generator_seed_1}\n")
-
-        # Ensure required files exist
-        if 10 not in latents_dict or not os.path.exists(os.path.join(prompt_output_dir, "step_75.png")):
-            print(f"❌ Skipping {prompt_id}, missing required latent/image files.")
-            # continue
-
-        # ----------------------- #
-        # 🔹 Step 2: First Refinement (Step 25 → Step 100)
-        # ----------------------- #
-        full_output_25 = get_refined_prompt(prompt, os.path.join(prompt_output_dir, "step_75.png"), tag)
-        decision_25, refined_prompt_25 = parse_qwen_output(full_output_25)
-
-        # Save Qwen output
-        refined_prompt_25_file = os.path.join(prompt_output_dir, "refined_prompt_25.txt")
-        with open(refined_prompt_25_file, "w") as f:
-            f.write(full_output_25)
-
-        if decision_25 == "True":
-            print(f"✅ Early stopping at 1st iter: Image matches the prompt.")
-            move_files({os.path.join(prompt_output_dir, "final_image.png"): os.path.join(prompt_output_dir, "ES1_final_image.png")})
-            # continue
-
-        if refined_prompt_25 == "None":
-            with open(os.path.join(prompt_output_dir, "dummy_25.txt"), "w") as f:
-                f.write("ES1_final_image.png")  # Write the content inside the file
-
-        print(f"✅ Refining further: Refined Prompt for Step 25: {refined_prompt_25}")
-
-        if 25 in latents_dict:
-            _, saved_latents_25 = refine_image(
-                refined_prompt_25, 
-                latents_dict[25], 
-                start_timestep=25, 
-                save_intermediate_steps=True, 
-                save_steps={38, 49, 57},
+        if check_image_exists(final_image_path) and check_image_exists(refinement_image_path):
+            print(f"✅ Initial image already exists for prompt {line_number}. Skipping generation.")
+            # We need to load the latents_dict if it exists
+            latents_dict = {}
+            for step in restart_steps:
+                latent_path = os.path.join(prompt_output_dir, f"latents_{step}.pt")
+                if os.path.exists(latent_path):
+                    latents_dict[step] = torch.load(latent_path)
+            generator_seed_1 = 42  # Default seed
+        else:
+            generator_seed_1 = 42
+            generator_seed_1, latents_dict = generate_image(
+                prompt, 
+                generator_seed=generator_seed_1, 
+                save_intermediate_steps=True,
                 output_dir=prompt_output_dir,
-                prefix="refined_25_",
-                model_version=model_version
+                model_version=model_version,
+                restart_steps=restart_steps,
+                prefix="image",
+                refinement_step=refinement_step
             )
 
-        # ----------------------- #
-        # 🔹 Step 3: Second Refinement (Step 10 → Step 100)
-        # ----------------------- #
-        refined_25_step_75_image = os.path.join(prompt_output_dir, "refined_25_step_75.png")
-        full_output_10 = get_refined_prompt(prompt, refined_25_step_75_image, tag)
-        decision_10, refined_prompt_10 = parse_qwen_output(full_output_10)
-
-        refined_prompt_10_file = os.path.join(prompt_output_dir, "refined_prompt_10.txt")
-        with open(refined_prompt_10_file, "w") as f:
-            f.write(full_output_10)
-
-        if decision_10 == "True":
-            print(f"✅ Early stopping at 2nd iter: Image matches the prompt.")
-            move_files({os.path.join(prompt_output_dir, "final_refined_25_.png"): os.path.join(prompt_output_dir, "ES2_final_image.png")})
-            # continue
-
-        if refined_prompt_10 == "None":
-            with open(os.path.join(prompt_output_dir, "dummy_10.txt"), "w") as f:
-                f.write("ES2_final_image.png")  # Write the content inside the file
-
-        print(f"✅ Refining further: Refined Prompt for Step 10: {refined_prompt_10}")
+        # ========================== #
+        #    Refinement Loop
+        # ========================== #
+        prompt_history = []  # Track prompt history
         
-        if 10 in latents_dict:
-            _, saved_latents_10 = refine_image(
-                refined_prompt_10, 
-                latents_dict[10], 
-                start_timestep=10, 
-                save_intermediate_steps=True, 
-                save_steps={14, 23, 45, 59, 68},
-                output_dir=prompt_output_dir,
-                prefix="refined_10_",
-                model_version=model_version
-            )
+        for i, restart_step in enumerate(restart_steps):
+            # Compute adjusted refinement step
+            remaining_steps = 100 - restart_step
+            adjusted_refinement_step = math.floor(refinement_step * (remaining_steps / 100))
 
-        # ----------------------- #
-        # 🔹 Step 4: Final Generation with Latest Refined Prompt
-        # ----------------------- #
-        refined_10_step_75_image = os.path.join(prompt_output_dir, "refined_10_step_75.png")
-        full_output_final = get_refined_prompt(prompt, refined_10_step_75_image, tag)
-        decision_final, refined_prompt_final = parse_qwen_output(full_output_final)
+            if i == 0: 
+                # prev_step_image = os.path.join(prompt_output_dir, f"final_image.png") # if using final image
+                prev_step_image = os.path.join(prompt_output_dir, f"imagestep_{refinement_step}.png") # if using final image
+            else:
+                prev_restart_step = restart_steps[i - 1]  # Get the previous restart step
+                prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png") # if using final image
+                # prev_step_image = os.path.join(prompt_output_dir, f"{i}_refined_{prev_restart_step}_final_image.png") # Use this when running multiple 0's
 
-        refined_prompt_final_file = os.path.join(prompt_output_dir, "refined_prompt_final.txt")
-        with open(refined_prompt_final_file, "w") as f:
-            f.write(full_output_final)
+            # Check if refined prompt already exists and load it if it does
+            refined_prompt_path = os.path.join(prompt_output_dir, f"{i}_refined_prompt_{restart_step}.txt")
+            if check_image_exists(refined_prompt_path):
+                print(f"Refined prompt for step {restart_step} already exists. Loading from file.")
+                with open(refined_prompt_path, "r") as f:
+                    full_output = f.read()
+                decision, refined_prompt = parse_qwen_output(full_output)
+            else:
+                # Pass the original prompt and history to get_refined_prompt
+                full_output = get_refined_prompt(prompt, prev_step_image, tag, prompt_history)
+                decision, refined_prompt = parse_qwen_output(full_output)
+                # Save refined prompt
+                with open(refined_prompt_path, "w") as f:
+                    f.write(full_output)
+                    
+            print(f"Refining further: Refined Prompt for Step {restart_step}: {refined_prompt}")
+            
+            # Add current refinement to history
+            prompt_history.append(refined_prompt)
+            
+            if i == 0:
+                if decision == "True":
+                    print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
+                    es_final_path = os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")
+                    if not check_image_exists(es_final_path):
+                        shutil.copy(os.path.join(prompt_output_dir, "final_image.png"), es_final_path)
+            else:
+                if decision == "True":
+                    print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
+                    es_final_path = os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")
+                    prev_final_path = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png")
+                    if not check_image_exists(es_final_path) and check_image_exists(prev_final_path):
+                        shutil.copy(prev_final_path, es_final_path)
 
-        if decision_final == "True":
-            print(f"✅ Final image is satisfactory. No further refinement needed.")
-            move_files({os.path.join(prompt_output_dir, "final_refined_10_.png"): os.path.join(prompt_output_dir, "ES3_final_image.png")})
-            # continue
+            # Check if refined image already exists
+            refined_image_path = ""
+            if restart_step == 0:
+                refined_image_path = os.path.join(prompt_output_dir, f"{i+1}_refined_{restart_step}_final_image.png")
+            else:
+                refined_image_path = os.path.join(prompt_output_dir, f"final_{i+1}_refined_{restart_step}_.png")
+                
+            if check_image_exists(refined_image_path):
+                print(f"✅ Refined image for step {restart_step} already exists. Skipping generation.")
+                continue
 
-        if refined_prompt_final == "None":
-            with open(os.path.join(prompt_output_dir, "dummy_final.txt"), "w") as f:
-                f.write("ES3_final_image.png")  # Write the content inside the file
-
-        print(f"✅ Generating final image with refined prompt: {refined_prompt_final}")
-        generator_seed_2 = 42
-        generate_image(
-            refined_prompt_final, 
-            generator_seed=generator_seed_2, 
-            save_intermediate_steps=True,
-            output_dir=prompt_output_dir,
-            prefix="final_",
-            model_version=model_version
-        )
-
-        # Append the second generator seed to the same seed file
-        with open(seed_file, "a") as f:
-            f.write(f"{generator_seed_2}\n")
-
-        move_files({"outputs/final/final_image.png": os.path.join(prompt_output_dir, "final_final_image.png")})
-        print(f"🎉 Completed {prompt_id} for tag {tag}! Results saved in {prompt_output_dir}")
-
+            # Restart generation (either from 0 or using refinement)
+            if restart_step == 0:
+                generator_seed_2 = 42
+                generate_image(
+                    refined_prompt, 
+                    generator_seed=generator_seed_2, 
+                    save_intermediate_steps=True,
+                    output_dir=prompt_output_dir,
+                    prefix=f"{i+1}_refined_{restart_step}_",
+                    model_version=model_version,
+                    refinement_step=refinement_step
+                )
+            else:
+                _, _ = refine_image(
+                    refined_prompt=refined_prompt, 
+                    init_latents=latents_dict[restart_step], 
+                    start_timestep=restart_step, 
+                    save_intermediate_steps=True, 
+                    refinement_step=refinement_step,
+                    adjusted_refinement_step=adjusted_refinement_step,
+                    output_dir=prompt_output_dir,
+                    prefix=f"{i+1}_refined_{restart_step}_",
+                    model_version=model_version
+                )
     print(f"\n✅ Completed processing for tag: {tag}")
+    
 
 # ======================== #
-# 🔹 Main Pipeline
+#    Main Pipeline
 # ======================== #
 def main():
     args = parse_args()
@@ -222,7 +229,7 @@ def main():
 
     # Process each tag separately
     for tag, prompts in grouped_prompts.items():
-        process_tag(tag, prompts, args.output_dir, args.model_version)
+        process_tag(tag, prompts, args.output_dir, args.model_version, args.restart_steps, args.refinement_step)
 
     print("\n✅ Batch Processing Complete for all tags!")
 

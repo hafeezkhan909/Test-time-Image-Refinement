@@ -5,8 +5,9 @@ from diffusion.models import load_models
 from diffusion.image_utils import decode_latents, save_image
 from diffusion.config import DEVICE, HEIGHT, WIDTH, NUM_INFERENCE_STEPS, GUIDANCE_SCALE, BATCH_SIZE
 
-def generate_image(prompt, generator_seed, save_intermediate_steps=False, output_dir=None, prefix="", model_version=""):
+def generate_image(prompt, generator_seed, save_intermediate_steps=False, output_dir=None, prefix="", model_version="", restart_steps=[], refinement_step=None):
     """Runs Stable Diffusion pipeline and saves images at different timesteps.
+       Also saves the latent state when the timestep equals 25.
     """
     vae, tokenizer, text_encoder, unet, scheduler = load_models(DEVICE, model_version=model_version)
     
@@ -49,8 +50,8 @@ def generate_image(prompt, generator_seed, save_intermediate_steps=False, output
     latents_dict = {}  # Store intermediate latents instead of saving them to disk
 
     # Select Intermediate Steps (for image saving)
-    save_steps = [NUM_INFERENCE_STEPS // 10, NUM_INFERENCE_STEPS * 3 // 20, NUM_INFERENCE_STEPS // 4, 
-                  13 * NUM_INFERENCE_STEPS // 20, NUM_INFERENCE_STEPS // 2, 3 * NUM_INFERENCE_STEPS // 4]
+    # save_steps = [NUM_INFERENCE_STEPS // 10, NUM_INFERENCE_STEPS * 3 // 20, NUM_INFERENCE_STEPS // 4, 
+    #               13 * NUM_INFERENCE_STEPS // 20, NUM_INFERENCE_STEPS // 2, 3 * NUM_INFERENCE_STEPS // 4]
     
     # Denoising Loop
     for step, t in enumerate(tqdm(scheduler.timesteps, desc="Denoising")):
@@ -66,12 +67,12 @@ def generate_image(prompt, generator_seed, save_intermediate_steps=False, output
         latents = scheduler.step(noise_pred, t, latents).prev_sample
 
         # Save the latent state when the timestep equals 25
-        if step in [10, 25]:
+        if step in restart_steps:
             latents_dict[step] = latents.clone()
             print(f"Saved latent state at timestep {step} in memory")
         
         # Save intermediate images
-        if save_intermediate_steps and step in save_steps:
+        if save_intermediate_steps and step == refinement_step: # replace with save_steps to see multiple latent images at diff time steps
             print(f"Saving intermediate image at Step {step}, Timestep {t}")
             intermediate_image = decode_latents(latents, vae)
             image_path = os.path.join(output_dir, f"{prefix}step_{step}.png")  # Add prefix to filename
@@ -82,7 +83,7 @@ def generate_image(prompt, generator_seed, save_intermediate_steps=False, output
     print(f"The seed used is {generator_seed}.")
 
     # Save final image
-    final_image_path = os.path.join(output_dir, f"{prefix}final_image.png")  # Add prefix to filename
+    final_image_path = os.path.join(output_dir, f"final_{prefix}.png")  # Add prefix to filename
     save_image(decode_latents(latents, vae), final_image_path)
 
     return generator_seed, latents_dict

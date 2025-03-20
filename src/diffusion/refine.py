@@ -5,7 +5,7 @@ from diffusion.models import load_models
 from diffusion.image_utils import decode_latents, save_image
 from diffusion.config import DEVICE, HEIGHT, WIDTH, NUM_INFERENCE_STEPS, GUIDANCE_SCALE, BATCH_SIZE
 
-def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermediate_steps=False, save_steps = {38, 49, 57}, output_dir=None, prefix="", model_version=""):
+def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermediate_steps=False, refinement_step=None, adjusted_refinement_step=None, output_dir=None, prefix="", model_version=""):
     """
     Refines an image starting from a latent state (e.g. at t=25) up to the final clean image.
     
@@ -65,7 +65,7 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
     start_idx = None
     for idx, t in enumerate(scheduler.timesteps):
         if idx == start_timestep:
-            start_idx = idx
+            start_idx = idx + 1
             break
     if start_idx is None:
         raise ValueError(f"Start timestep {start_timestep} not found in scheduler.timesteps.")
@@ -75,6 +75,8 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
         remaining_steps = len(scheduler.timesteps[start_idx:])
         # For example, save at the middle of the remaining denoising process:
         # save_steps = {22, 43, 64}
+
+    # save_steps = {38, 49, 57}
 
     save_step_mapping = {
     14: 15, 23: 25, 45: 50, 59: 65, 68: 75,  # Mapping for {14, 23, 45, 59, 68} → {15, 25, 50, 75}
@@ -100,9 +102,9 @@ def refine_image(refined_prompt, init_latents, start_timestep=25, save_intermedi
         latents = scheduler.step(noise_pred, t, latents).prev_sample
 
         # Optionally save intermediate refined images
-        if save_intermediate_steps and step in save_steps:
+        if save_intermediate_steps and step == adjusted_refinement_step: # replace with save_steps to see multiple latent images at diff time steps
             
-            mapped_step = save_step_mapping.get(step, step)  # Convert old step to new step for saving
+            mapped_step = refinement_step
             print(f"Saving intermediate refined image at step {step} (saving as {mapped_step}) (timestep {t})")
             intermediate_image = decode_latents(latents, vae)
             # latent_path = f"outputs/5_refined_latents/latent_t75.pt"
