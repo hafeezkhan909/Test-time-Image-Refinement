@@ -12,7 +12,7 @@ python src/image_prompt_mapping.py  # Creates image_prompt_mapping.json
 
 # # Step 3: Run the Diffusion Pipeline (Image Generation)
 echo "🔹 Step 3: Running the diffusion pipeline for Stable Diffusion 1.5..."
-RESTART_STEPS=(75 50 25)  # Modify this array as needed
+RESTART_STEPS=(0 0 0)  # Modify this array as needed
 REFINEMENT_STEP=99
 OUTPUT_DIR="drawbench/drawbench_raw_images"
 DRAWBENCH_OUTPUT_DIR="drawbench/drawbench_gen_images"
