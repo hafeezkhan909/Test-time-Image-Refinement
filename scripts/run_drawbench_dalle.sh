@@ -25,7 +25,7 @@ REFINEMENT_ITERATIONS=2
 # fi
 
 # Run the DALL-E generation pipeline
-python src/modular/main_dalle.py \
+python src/main_dalle.py \
   --prompts_file drawbench_prompts.json \
   --output_dir "$OUTPUT_DIR" \
   --refinement_iterations $REFINEMENT_ITERATIONS \

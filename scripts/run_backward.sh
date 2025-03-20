@@ -21,4 +21,4 @@ REFINEMENT_STEP=99
 OUTPUT_DIR="test/test"
 GENEVEAL_OUTPUT_DIR="generated_images"
 
-python src/modular/main.py --model_version 1.5 --output_dir "$OUTPUT_DIR" --restart_steps "${RESTART_STEPS[@]}" --refinement_step $REFINEMENT_STEP
+python src/main.py --model_version 1.5 --output_dir "$OUTPUT_DIR" --restart_steps "${RESTART_STEPS[@]}" --refinement_step $REFINEMENT_STEP
