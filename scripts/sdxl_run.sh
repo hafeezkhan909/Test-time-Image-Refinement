@@ -11,7 +11,7 @@ python scripts/extract/extract_prompts.py
 
 # Step 2: Run the SD XL configuration
 echo "🔹 Running the SDXL diffusion pipeline..."
-python src/r_sdxl.py
+python src/sdxl_run.py
 
 # Step 3: Post-process the generated images
 echo "🔹 Post-processing generated images. Getting the images ready for GenEval test..."
