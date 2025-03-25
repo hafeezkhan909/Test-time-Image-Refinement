@@ -1,7 +1,3 @@
-Here's your updated README with the additional instructions for running the pipeline step-by-step.
-
----
-
 # Test-time Prompt Refinement for Text-to-Image Models
 
 ## Abstract
