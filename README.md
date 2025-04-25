@@ -1,4 +1,4 @@
-# **Diffusion-Model-LLM**
+# **Test-time Image Refinement**
 
 ## **Overview**
 This project integrates a **diffusion model** with **LLM-guided prompt refinement** to iteratively enhance text-to-image generation. The pipeline consists of **prompt extraction, image generation, and post-processing**. 
