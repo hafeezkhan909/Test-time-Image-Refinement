@@ -6,7 +6,7 @@ from diffusers import DiffusionPipeline
 from qwen_integration import get_refined_prompt
 from PIL import Image
 import shutil
-# Ready for SD3 run
+# Ready for SDXL run
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument("--prompts_file", type=str, default="filtered_prompts.json")
