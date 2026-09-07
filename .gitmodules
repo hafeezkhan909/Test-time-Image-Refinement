@@ -1,3 +1,0 @@
-[submodule "drawbench/clipscore"]
-	path = drawbench/clipscore
-	url = https://github.com/jmhessel/clipscore
