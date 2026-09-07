@@ -3,13 +3,13 @@ import json
 def create_image_prompt_mapping(input_path="drawbench_prompts.json", output_path="image_prompt_mapping.json"):
     """Creates a JSON file mapping image names (prompt_XXX) to their respective prompts."""
     
-    print("\n🔹 Loading DrawBench prompts...")
+    print("\nLoading DrawBench prompts...")
     with open(input_path, "r") as f:
         categorized_prompts = json.load(f)
 
     image_prompt_mapping = {}
 
-    print("\n✅ Generating Image-to-Prompt Mapping...")
+    print("\nGenerating image-to-prompt mapping...")
 
     # Iterate through categories and create mapping
     for category, prompts in categorized_prompts.items():
@@ -26,7 +26,7 @@ def create_image_prompt_mapping(input_path="drawbench_prompts.json", output_path
     with open(output_path, "w") as f:
         json.dump(image_prompt_mapping, f, indent=4)
 
-    print(f"\n✅ Image-to-Prompt Mapping saved successfully in `{output_path}`!")
+    print(f"\nImage-to-prompt mapping saved successfully in `{output_path}`!")
 
 if __name__ == "__main__":
     create_image_prompt_mapping()

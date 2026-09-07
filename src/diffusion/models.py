@@ -3,7 +3,6 @@ from diffusers import AutoencoderKL, UNet2DConditionModel, LMSDiscreteScheduler
 from transformers import CLIPTextModel, CLIPTokenizer
 from transformers import CLIPTextModelWithProjection, CLIPTokenizer as OpenCLIPTokenizer
 
-#test comment
 def load_models(device, model_version="1.5"):
     """
     Load models for the specified Stable Diffusion version.

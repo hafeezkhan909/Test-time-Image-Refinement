@@ -3,7 +3,6 @@ import json
 import torch
 import argparse
 from diffusion.pipeline import generate_image
-from qwen_integration import get_refined_prompt
 from diffusion.refine import refine_image
 import math
 import shutil
@@ -43,9 +42,58 @@ def parse_args():
         "--refinement_step",
         type=int,
         default=99,
-        help="Step at which to take feedback from Qwen (default: 99)"
+        help="Step at which to take feedback from the MLLM (default: 99)"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Generator seed used for every image generation call (default: 42)"
+    )
+    parser.add_argument(
+        "--num_inference_steps",
+        type=int,
+        default=100,
+        help="Number of denoising steps for the diffusion schedule (default: 100)"
+    )
+    parser.add_argument(
+        "--guidance_scale",
+        type=float,
+        default=7.5,
+        help="Classifier-free guidance scale (default: 7.5)"
+    )
+    parser.add_argument(
+        "--height",
+        type=int,
+        default=512,
+        help="Output image height in pixels (default: 512)"
+    )
+    parser.add_argument(
+        "--width",
+        type=int,
+        default=512,
+        help="Output image width in pixels (default: 512)"
+    )
+    parser.add_argument(
+        "--mllm",
+        type=str,
+        default="qwen",
+        choices=["qwen", "gpt4o"],
+        help="Which model judges/refines the prompt each round: local Qwen2.5-VL or Azure OpenAI GPT-4o (default: qwen)"
     )
     return parser.parse_args()
+
+# ======================== #
+#    MLLM Selection
+# ======================== #
+def load_refiner(mllm):
+    if mllm == "qwen":
+        from qwen_integration import get_refined_prompt
+    elif mllm == "gpt4o":
+        from aoai import get_refined_prompt
+    else:
+        raise ValueError(f"Unknown mllm choice: {mllm!r}")
+    return get_refined_prompt
 
 # ======================== #
 #    Utility Functions
@@ -56,7 +104,7 @@ def load_prompts(file_path):
         return json.load(f)
 
 def parse_qwen_output(full_output):
-    """Parses Qwen output to extract decision (True/False) and refined prompt."""
+    """Parses the MLLM's output to extract decision (True/False) and refined prompt."""
     decision = None
     refined_prompt = None
 
@@ -81,19 +129,20 @@ def check_image_exists(filepath):
     return os.path.exists(filepath)
 
 # ======================== #
-#    Tag-Specific Logic
+#    Main Processing Loop
 # ======================== #
-def process_tag(tag, prompts, output_dir, model_version, restart_steps, refinement_step):
+def process_tag(tag, prompts, output_dir, model_version, restart_steps, refinement_step, seed,
+                 num_inference_steps, guidance_scale, height, width, get_refined_prompt):
     """Process all prompts for a specific tag."""
     print(f"\n   Processing tag: {tag}")
     tag_output_dir = os.path.join(output_dir, tag)
     os.makedirs(tag_output_dir, exist_ok=True)
-    cnt = 0
+
     for prompt_data in prompts:
 
         prompt = prompt_data["prompt"]
         line_number = prompt_data["line_number"]  # Get the line number
-        print(f"\n🚀 Processing Prompt {line_number} for tag {tag}:\n{prompt}")
+        print(f"\nProcessing Prompt {line_number} for tag {tag}:\n{prompt}")
 
         # Create unique prompt-specific folder using the line number
         prompt_id = f"prompt_{line_number:03d}"  # Use line number for folder name
@@ -107,16 +156,16 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
         refinement_image_path = os.path.join(prompt_output_dir, f"imagestep_{refinement_step}.png")
         
         if check_image_exists(final_image_path) and check_image_exists(refinement_image_path):
-            print(f"✅ Initial image already exists for prompt {line_number}. Skipping generation.")
+            print(f"Initial image already exists for prompt {line_number}. Skipping generation.")
             # We need to load the latents_dict if it exists
             latents_dict = {}
             for step in restart_steps:
                 latent_path = os.path.join(prompt_output_dir, f"latents_{step}.pt")
                 if os.path.exists(latent_path):
                     latents_dict[step] = torch.load(latent_path)
-            generator_seed_1 = 42  # Default seed
+            generator_seed_1 = seed
         else:
-            generator_seed_1 = 42
+            generator_seed_1 = seed
             generator_seed_1, latents_dict = generate_image(
                 prompt, 
                 generator_seed=generator_seed_1, 
@@ -125,7 +174,11 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                 model_version=model_version,
                 restart_steps=restart_steps,
                 prefix="image",
-                refinement_step=refinement_step
+                refinement_step=refinement_step,
+                num_inference_steps=num_inference_steps,
+                guidance_scale=guidance_scale,
+                height=height,
+                width=width
             )
 
         # ========================== #
@@ -135,16 +188,14 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
         
         for i, restart_step in enumerate(restart_steps):
             # Compute adjusted refinement step
-            remaining_steps = 100 - restart_step
-            adjusted_refinement_step = math.floor(refinement_step * (remaining_steps / 100))
+            remaining_steps = num_inference_steps - restart_step
+            adjusted_refinement_step = math.floor(refinement_step * (remaining_steps / num_inference_steps))
 
             if i == 0: 
-                # prev_step_image = os.path.join(prompt_output_dir, f"final_image.png") # if using final image
-                prev_step_image = os.path.join(prompt_output_dir, f"imagestep_{refinement_step}.png") # if using final image
+                prev_step_image = os.path.join(prompt_output_dir, f"imagestep_{refinement_step}.png")
             else:
                 prev_restart_step = restart_steps[i - 1]  # Get the previous restart step
-                prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png") # if using final image
-                # prev_step_image = os.path.join(prompt_output_dir, f"{i}_refined_{prev_restart_step}_final_image.png") # Use this when running multiple 0's
+                prev_step_image = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png")
 
             # Check if refined prompt already exists and load it if it does
             refined_prompt_path = os.path.join(prompt_output_dir, f"{i}_refined_prompt_{restart_step}.txt")
@@ -168,32 +219,28 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
             
             if i == 0:
                 if decision == "True":
-                    print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
+                    print(f"Faithful image produced at iteration {i+1}, marked as ES{i+1} (refinement continues).")
                     es_final_path = os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")
                     if not check_image_exists(es_final_path):
                         shutil.copy(os.path.join(prompt_output_dir, "final_image.png"), es_final_path)
             else:
                 if decision == "True":
-                    print(f"✅ Early stopping at {i+1} iter, image matches the prompt.")
+                    print(f"Faithful image produced at iteration {i+1}, marked as ES{i+1} (refinement continues).")
                     es_final_path = os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")
                     prev_final_path = os.path.join(prompt_output_dir, f"final_{i}_refined_{prev_restart_step}_.png")
                     if not check_image_exists(es_final_path) and check_image_exists(prev_final_path):
                         shutil.copy(prev_final_path, es_final_path)
 
             # Check if refined image already exists
-            refined_image_path = ""
-            if restart_step == 0:
-                refined_image_path = os.path.join(prompt_output_dir, f"{i+1}_refined_{restart_step}_final_image.png")
-            else:
-                refined_image_path = os.path.join(prompt_output_dir, f"final_{i+1}_refined_{restart_step}_.png")
-                
+            refined_image_path = os.path.join(prompt_output_dir, f"final_{i+1}_refined_{restart_step}_.png")
+
             if check_image_exists(refined_image_path):
-                print(f"✅ Refined image for step {restart_step} already exists. Skipping generation.")
+                print(f"Refined image for step {restart_step} already exists. Skipping generation.")
                 continue
 
             # Restart generation (either from 0 or using refinement)
             if restart_step == 0:
-                generator_seed_2 = 42
+                generator_seed_2 = seed
                 generate_image(
                     refined_prompt, 
                     generator_seed=generator_seed_2, 
@@ -201,7 +248,11 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                     output_dir=prompt_output_dir,
                     prefix=f"{i+1}_refined_{restart_step}_",
                     model_version=model_version,
-                    refinement_step=refinement_step
+                    refinement_step=refinement_step,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    height=height,
+                    width=width
                 )
             else:
                 _, _ = refine_image(
@@ -213,9 +264,11 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
                     adjusted_refinement_step=adjusted_refinement_step,
                     output_dir=prompt_output_dir,
                     prefix=f"{i+1}_refined_{restart_step}_",
-                    model_version=model_version
+                    model_version=model_version,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale
                 )
-    print(f"\n✅ Completed processing for tag: {tag}")
+    print(f"\nCompleted processing for tag: {tag}")
     
 
 # ======================== #
@@ -224,14 +277,21 @@ def process_tag(tag, prompts, output_dir, model_version, restart_steps, refineme
 def main():
     args = parse_args()
 
+    # Resolve the MLLM choice once, lazily, before any per-prompt work starts
+    get_refined_prompt = load_refiner(args.mllm)
+
     # Load prompts grouped by tag
     grouped_prompts = load_prompts(args.prompts_file)
 
     # Process each tag separately
     for tag, prompts in grouped_prompts.items():
-        process_tag(tag, prompts, args.output_dir, args.model_version, args.restart_steps, args.refinement_step)
+        process_tag(
+            tag, prompts, args.output_dir, args.model_version, args.restart_steps, args.refinement_step,
+            args.seed, args.num_inference_steps, args.guidance_scale, args.height, args.width,
+            get_refined_prompt
+        )
 
-    print("\n✅ Batch Processing Complete for all tags!")
+    print("\nBatch Processing Complete for all tags!")
 
 if __name__ == "__main__":
     main()

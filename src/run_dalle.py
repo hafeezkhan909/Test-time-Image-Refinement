@@ -2,26 +2,11 @@ import os
 import json
 import argparse
 import httpx
-from io import BytesIO
-import base64
-from PIL import Image
 import time
 import shutil
-import random
-import math
-# Choose one of these imports based on your preference
-# from qwen_integration import get_refined_prompt
-from aoai import get_refined_prompt
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AzureOpenAI
-
-# Initialize Azure OpenAI client
-# client = AzureOpenAI(
-#     api_version="2024-05-01-preview",
-#     azure_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', "https://dalle-exploration.openai.azure.com/"),
-#     credential=DefaultAzureCredential()
-# )
 
 endpoint = os.getenv("ENDPOINT_URL", "https://dalle-exploration.openai.azure.com/")  
 
@@ -41,7 +26,7 @@ client = AzureOpenAI(
 dalle_model = os.environ.get("DALLE_MODEL", "dalle3")
 
 # ======================== #
-# 🔹 Argument Parsing
+#    Argument Parsing
 # ======================== #
 def parse_args():
     parser = argparse.ArgumentParser(description="Run the DALL-E pipeline with prompt refinement.")
@@ -77,10 +62,26 @@ def parse_args():
         choices=["standard", "hd"],
         help="Image quality (default: standard)"
     )
+    parser.add_argument(
+        "--mllm",
+        type=str,
+        default="qwen",
+        choices=["qwen", "gpt4o"],
+        help="Which model judges/refines the prompt each round (default: qwen)"
+    )
     return parser.parse_args()
 
+def load_refiner(mllm):
+    if mllm == "qwen":
+        from qwen_integration import get_refined_prompt
+    elif mllm == "gpt4o":
+        from aoai import get_refined_prompt
+    else:
+        raise ValueError(f"Unknown mllm choice: {mllm!r}")
+    return get_refined_prompt
+
 # ======================== #
-# 🔹 Utility Functions
+#    Utility Functions
 # ======================== #
 def load_prompts(file_path):
     """Loads prompts from JSON file grouped by tag."""
@@ -122,7 +123,7 @@ def generate_image_dalle(prompt, output_path, size="1024x1024", quality="standar
         bool: True if image was successfully generated, False otherwise.
     """
     if check_image_exists(output_path):
-        print(f"✅ Image already exists at {output_path}. Skipping generation.")
+        print(f"Image already exists at {output_path}. Skipping generation.")
         return True
         
     try:
@@ -148,28 +149,28 @@ def generate_image_dalle(prompt, output_path, size="1024x1024", quality="standar
         with open(output_path, "wb") as image_file:
             image_file.write(generated_image)
         
-        print(f"✅ Image saved to {output_path}")
+        print(f"Image saved to {output_path}")
         # Add a small delay to avoid rate limiting
         time.sleep(1)
         return True
         
     except Exception as e:
-        print(f"❌ Error generating image: {str(e)}")
+        print(f"Error generating image: {str(e)}")
         return False
 
 # ======================== #
-# 🔹 Tag-Specific Logic
+#    Main Processing Loop
 # ======================== #
-def process_tag(tag, prompts, output_dir, refinement_iterations, size, quality):
+def process_tag(tag, prompts, output_dir, refinement_iterations, size, quality, get_refined_prompt):
     """Process all prompts for a specific tag."""
-    print(f"\n🔹 Processing tag: {tag}")
+    print(f"\nProcessing tag: {tag}")
     tag_output_dir = os.path.join(output_dir, tag)
     os.makedirs(tag_output_dir, exist_ok=True)
     
     for prompt_data in prompts:
         prompt = prompt_data["prompt"]
         line_number = prompt_data["line_number"]
-        print(f"\n🚀 Processing Prompt {line_number} for tag {tag}:\n{prompt}")
+        print(f"\nProcessing Prompt {line_number} for tag {tag}:\n{prompt}")
 
         # Create unique prompt-specific folder using the line number
         prompt_id = f"prompt_{line_number:03d}"
@@ -177,30 +178,31 @@ def process_tag(tag, prompts, output_dir, refinement_iterations, size, quality):
         os.makedirs(prompt_output_dir, exist_ok=True)
 
         # ----------------------- #
-        # 🔹 Step 1: Initial Image Generation
+        #    Step 1: Initial Image Generation
         # ----------------------- #
-        initial_image_path = os.path.join(prompt_output_dir, "initial_image.png")
-        generate_image_dalle(prompt, initial_image_path, size, quality)
+        final_image_path = os.path.join(prompt_output_dir, "final_image.png")
+        if not generate_image_dalle(prompt, final_image_path, size, quality):
+            print(f"Skipping prompt {line_number} for tag {tag}: initial image generation failed.")
+            continue
         
         # ========================== #
-        # 🔹 Refinement Loop
+        #    Refinement Loop
         # ========================== #
-        current_prompt = prompt
         prompt_history = []  # Track prompt history
         
         for i in range(refinement_iterations):
             # Get previous image path
             if i == 0:
-                prev_image_path = initial_image_path
+                prev_image_path = final_image_path
             else:
-                prev_image_path = os.path.join(prompt_output_dir, f"refined_image_{i}.png")
+                prev_image_path = os.path.join(prompt_output_dir, f"final_{i}_refined_0_.png")
             
             # Check if refined prompt already exists and load it if it does
-            refined_prompt_path = os.path.join(prompt_output_dir, f"refined_prompt_{i+1}.txt")
-            refined_image_path = os.path.join(prompt_output_dir, f"refined_image_{i+1}.png")
+            refined_prompt_path = os.path.join(prompt_output_dir, f"{i}_refined_prompt_0.txt")
+            refined_image_path = os.path.join(prompt_output_dir, f"final_{i+1}_refined_0_.png")
             
             if check_image_exists(refined_prompt_path) and check_image_exists(refined_image_path):
-                print(f"✅ Refined prompt and image {i+1} already exist. Loading from file.")
+                print(f"Refined prompt and image {i+1} already exist. Loading from file.")
                 with open(refined_prompt_path, "r") as f:
                     full_output = f.read()
                 decision, refined_prompt = parse_qwen_output(full_output)
@@ -212,14 +214,14 @@ def process_tag(tag, prompts, output_dir, refinement_iterations, size, quality):
                 with open(refined_prompt_path, "w") as f:
                     f.write(full_output)
             
-            print(f"✅ Refinement {i+1}: {refined_prompt}")
+            print(f"Refinement {i+1}: {refined_prompt}")
             
             # Add current refinement to history
             prompt_history.append(refined_prompt)
             
-            # Check if early stopping is triggered
+            # Check if the image is already faithful to the prompt
             if decision == "True":
-                print(f"✅ Early stopping at iteration {i+1}, image matches the prompt.")
+                print(f"Faithful image produced at iteration {i+1}, marked as ES{i+1} (refinement continues).")
                 es_final_path = os.path.join(prompt_output_dir, f"ES{i+1}_final_image.png")
                 if not check_image_exists(es_final_path):
                     shutil.copy(prev_image_path, es_final_path)
@@ -227,24 +229,27 @@ def process_tag(tag, prompts, output_dir, refinement_iterations, size, quality):
             
             # Generate new image with refined prompt
             if not check_image_exists(refined_image_path):
-                generate_image_dalle(refined_prompt, refined_image_path, size, quality)
+                if not generate_image_dalle(refined_prompt, refined_image_path, size, quality):
+                    print(f"Stopping refinement for prompt {line_number} for tag {tag} at iteration {i+1}: image generation failed.")
+                    break
             
-    print(f"\n✅ Completed processing for tag: {tag}")
+    print(f"\nCompleted processing for tag: {tag}")
 
 # ======================== #
-# 🔹 Main Pipeline
+#    Main Pipeline
 # ======================== #
 def main():
     args = parse_args()
+    get_refined_prompt = load_refiner(args.mllm)
 
     # Load prompts grouped by tag
     grouped_prompts = load_prompts(args.prompts_file)
 
     # Process each tag separately
     for tag, prompts in grouped_prompts.items():
-        process_tag(tag, prompts, args.output_dir, args.refinement_iterations, args.size, args.quality)
+        process_tag(tag, prompts, args.output_dir, args.refinement_iterations, args.size, args.quality, get_refined_prompt)
 
-    print("\n✅ Batch Processing Complete for all tags!")
+    print("\nBatch Processing Complete for all tags!")
 
 if __name__ == "__main__":
     main()
