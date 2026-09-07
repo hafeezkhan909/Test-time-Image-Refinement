@@ -3,60 +3,60 @@
         "object": "laptop"
     },
     "2": {
-        "object": "handbag"
-    },
-    "3": {
         "object": "fire hydrant"
     },
+    "3": {
+        "object": "chair"
+    },
     "4": {
-        "object": "couch"
-    },
-    "5": {
-        "object": "sports ball"
-    },
-    "6": {
-        "object": "bench"
-    },
-    "7": {
-        "object": "apple"
-    },
-    "8": {
-        "object": "horse"
-    },
-    "9": {
-        "object": "birds"
-    },
-    "10": {
-        "object": "car"
-    },
-    "11": {
-        "object": "backpack"
-    },
-    "12": {
-        "object": "cup"
-    },
-    "13": {
-        "object": "clock"
-    },
-    "14": {
-        "object": "frisbee"
-    },
-    "15": {
-        "object": "cat"
-    },
-    "16": {
         "object": "dog"
     },
-    "17": {
+    "5": {
+        "object": "teddy bear"
+    },
+    "6": {
+        "object": "cup"
+    },
+    "7": {
+        "object": "bowl"
+    },
+    "8": {
+        "object": "cat"
+    },
+    "9": {
+        "object": "handbag"
+    },
+    "10": {
+        "object": "sports ball"
+    },
+    "11": {
+        "object": "umbrella"
+    },
+    "12": {
+        "object": "horse"
+    },
+    "13": {
+        "object": "wine glass"
+    },
+    "14": {
         "object": "bottle"
     },
+    "15": {
+        "object": "clock"
+    },
+    "16": {
+        "object": "apple"
+    },
+    "17": {
+        "object": "car"
+    },
     "18": {
-        "object": "teddy bear"
+        "object": "bench"
     },
     "19": {
         "object": "banana"
     },
     "20": {
-        "object": "bicycle"
+        "object": "backpack"
     }
 }

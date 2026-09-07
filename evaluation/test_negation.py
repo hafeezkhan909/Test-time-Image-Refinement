@@ -1,82 +1,97 @@
 import json
 import os
+import argparse
 from object_detection import ObjectDetector
 from image_utils import load_image
 from visualization import save_detection_visualization
+from image_selection import get_final_image_path
 
-# Load test queries from JSON
-with open("data/negation/negation_specific.json", "r") as f:
-    test_queries = json.load(f)  # Format: {"0": {"object": "aeroplane"}}
 
-# Define base path for images
-base_image_path = "data/negation/b_lmd+/"
+def parse_args():
+    parser = argparse.ArgumentParser(description="Evaluate negation prompts against generated images.")
+    parser.add_argument("--query_json", type=str, default="json_files/negation_specific.json",
+                         help="Path to the negation query JSON (keyed by line_number).")
+    parser.add_argument("--images_dir", type=str, required=True,
+                         help="Path to the pipeline's output_dir (contains <tag>/prompt_XXX/ subfolders).")
+    parser.add_argument("--output_json", type=str, default="negation_results.json",
+                         help="Path to save the results JSON.")
+    parser.add_argument("--visualization_dir", type=str, default="detection_visualization/negation",
+                         help="Directory to save detection visualization images.")
+    parser.add_argument("--refinement_iterations", type=int, default=3,
+                         help="Number of refinement rounds the pipeline ran (default: 3).")
+    parser.add_argument("--last_restart_step", type=int, default=0,
+                         help="Restart step used for the final refinement round (default: 0).")
+    parser.add_argument("--selection_mode", type=str, default="first_early_stop",
+                         choices=["first_early_stop", "final_only"],
+                         help="How to pick the evaluated image per prompt (default: first_early_stop).")
+    return parser.parse_args()
 
-# Initialize Object Detector
-detector = ObjectDetector()
 
-# Accuracy Tracking Variables
-total_correct = 0
-valid_queries = 0  # Count only images that exist
+def main():
+    args = parse_args()
+    tag = "negation"
 
-# Results dictionary to save as JSON
-results = {}
+    with open(args.query_json, "r") as f:
+        test_queries = json.load(f)  # Format: {"1": {"object": "laptop"}, ...}
 
-# Process each query
-for query_id, query_data in test_queries.items():
-    forbidden_object = query_data["object"]
+    detector = ObjectDetector()
 
-    image_path = os.path.join(base_image_path, query_id, "img_0.png")
+    total_correct = 0
+    valid_queries = 0
+    results = {}
 
-    # Check if image exists
-    if not os.path.exists(image_path):
-        print(f"❌ Image not found: {image_path}, skipping...")
-        continue  # Skip missing images completely from calculations
+    for line_number, query_data in test_queries.items():
+        forbidden_object = query_data["object"]
 
-    valid_queries += 1  # Only count queries with existing images
+        prompt_id = f"prompt_{int(line_number):03d}"
+        prompt_dir = os.path.join(args.images_dir, tag, prompt_id)
+        image_path = get_final_image_path(
+            prompt_dir,
+            refinement_iterations=args.refinement_iterations,
+            last_restart_step=args.last_restart_step,
+            selection_mode=args.selection_mode,
+        )
 
-    # Load image
-    image = load_image(image_path)
+        if image_path is None:
+            print(f"Image not found for {prompt_id}, skipping...")
+            continue
 
-    # Run detection
-    detected_objects, bounding_boxes, scores = detector.detect_objects(image, [forbidden_object])
+        valid_queries += 1
+        image = load_image(image_path)
 
-    # Compute accuracy
-    accuracy = 100 if forbidden_object not in detected_objects else 0  # Object absent = perfect score
+        detected_objects, bounding_boxes, scores = detector.detect_objects(image, [forbidden_object])
 
-    total_correct += accuracy
+        accuracy = 100 if forbidden_object not in detected_objects else 0
+        total_correct += accuracy
 
-    # Save visualization (Even though ideally, no bounding boxes should be present)
-    save_path = f"data/negation/b_lmd+/detection_visualization/img_{query_id}_negation.png"
-    save_detection_visualization(image, detected_objects, bounding_boxes, scores, save_path)
+        save_path = os.path.join(args.visualization_dir, f"{prompt_id}_negation.png")
+        save_detection_visualization(image, detected_objects, bounding_boxes, scores, save_path)
 
-    # Store results
-    results[query_id] = {
-        "image_path": image_path,
-        "forbidden_object": forbidden_object,
-        "detected_objects": detected_objects,
-        "bounding_boxes": bounding_boxes,
-        "confidence_scores": scores,
-        "accuracy": accuracy,
-        "visualization_path": save_path
-    }
+        results[line_number] = {
+            "image_path": image_path,
+            "forbidden_object": forbidden_object,
+            "detected_objects": detected_objects,
+            "bounding_boxes": bounding_boxes,
+            "confidence_scores": scores,
+            "accuracy": accuracy,
+            "visualization_path": save_path
+        }
 
-    # Print Results
-    print(f"\n=== Image {query_id} Results ===")
-    print(f"🚫 Expected Absence of: {forbidden_object}")
-    print(f"🔍 Detected Objects: {detected_objects}")
-    print(f"🖼 Bounding Boxes: {bounding_boxes}")
-    print(f"📊 Confidence Scores: {scores}")
-    print(f"✅ Accuracy: {accuracy:.2f}%")
-    print(f"✅ Image with detections saved at: {save_path}")
+        print(f"\n=== {prompt_id} Results ===")
+        print(f"Expected absence of: {forbidden_object}")
+        print(f"Detected objects: {detected_objects}")
+        print(f"Accuracy: {accuracy:.2f}%")
 
-# Compute overall accuracy only over valid queries (images that exist)
-overall_accuracy = total_correct / valid_queries if valid_queries > 0 else 0
-results["overall_accuracy"] = overall_accuracy
+    overall_accuracy = total_correct / valid_queries if valid_queries > 0 else 0
+    results["overall_accuracy"] = overall_accuracy
 
-# Save results to JSON
-output_file = "data/negation/b_lmd+/b_lmd+_negation_results.json"
-with open(output_file, "w") as json_file:
-    json.dump(results, json_file, indent=4)
+    os.makedirs(os.path.dirname(args.output_json) or ".", exist_ok=True)
+    with open(args.output_json, "w") as f:
+        json.dump(results, f, indent=4)
 
-print(f"\n📊 **Final Accuracy Across {valid_queries} Images: {overall_accuracy:.2f}%**")
-print(f"✅ All results saved to {output_file}")
+    print(f"\nFinal accuracy across {valid_queries} images: {overall_accuracy:.2f}%")
+    print(f"All results saved to {args.output_json}")
+
+
+if __name__ == "__main__":
+    main()
