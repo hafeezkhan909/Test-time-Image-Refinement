@@ -16,7 +16,7 @@ if [ -f "$DRAWBENCH_PROMPTS_FILE" ]; then
     echo "$DRAWBENCH_PROMPTS_FILE already exists. Skipping."
 else
     echo "Fetching DrawBench prompts..."
-    python src/prepare_drawbench_prompts.py
+    python scripts/pre_process/prepare_drawbench_prompts.py
 fi
 
 # Step 2: Build the image-to-prompt mapping
@@ -24,7 +24,7 @@ if [ -f "$IMAGE_PROMPT_MAPPING_FILE" ]; then
     echo "$IMAGE_PROMPT_MAPPING_FILE already exists. Skipping."
 else
     echo "Building image-to-prompt mapping..."
-    python src/image_prompt_mapping.py
+    python scripts/pre_process/image_prompt_mapping.py
 fi
 
 # Step 3: Run the TIR refinement loop
