@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="dalle_outputs",
+        default="new_outputs/geneval_batch_results_SD",
         help="Directory to save outputs"
     )
     parser.add_argument(

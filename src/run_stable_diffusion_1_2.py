@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="test/test",
+        default="new_outputs/geneval_batch_results_SD",
         help="Directory to save outputs (default: test/test)"
     )
     parser.add_argument(

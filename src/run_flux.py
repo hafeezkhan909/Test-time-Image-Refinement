@@ -4,15 +4,17 @@ import torch
 from argparse import ArgumentParser
 import shutil
 
+# FLUX.1-dev is a gated checkpoint on Hugging Face. Before running this script,
+# accept the license at https://huggingface.co/black-forest-labs/FLUX.1-dev
+# and authenticate locally, e.g. `huggingface-cli login` or set HF_TOKEN.
+
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument("--model", type=str, default="sdxl", choices=["sdxl", "sd3", "sana1.5"])
     parser.add_argument("--prompts_file", type=str, default="filtered_prompts.json")
-    parser.add_argument("--output_dir", type=str, default="new_outputs/geneval_batch_results_SD")
+    parser.add_argument("--output_dir", type=str, default="new_outputs/geneval_batch_results_flux")
     parser.add_argument("--refinement_iterations", type=int, default=3)
-    parser.add_argument("--num_inference_steps", type=int, default=100)
-    parser.add_argument("--guidance_scale", type=float, default=None,
-                         help="Defaults to 7.5 for sdxl/sd3, 4.5 for sana1.5, if not set explicitly.")
+    parser.add_argument("--num_inference_steps", type=int, default=50)
+    parser.add_argument("--guidance_scale", type=float, default=3.5)
     parser.add_argument("--height", type=int, default=1024)
     parser.add_argument("--width", type=int, default=1024)
     parser.add_argument("--mllm", type=str, default="qwen", choices=["qwen", "gpt4o"])
@@ -26,49 +28,6 @@ def load_refiner(mllm):
     else:
         raise ValueError(f"Unknown mllm choice: {mllm!r}")
     return get_refined_prompt
-
-def load_backend(model, args):
-    if model == "sdxl":
-        from diffusers import DiffusionPipeline
-        guidance_scale = args.guidance_scale if args.guidance_scale is not None else 7.5
-        return {
-            "pipeline_class": DiffusionPipeline,
-            "model_id": "stabilityai/stable-diffusion-xl-base-1.0",
-            "load_kwargs": {"torch_dtype": torch.float16, "use_safetensors": True, "variant": "fp16"},
-            "extra_setup": None,
-            "call_kwargs": lambda prompt: dict(
-                prompt=prompt, negative_prompt="", height=args.height, width=args.width,
-                num_inference_steps=args.num_inference_steps, guidance_scale=guidance_scale
-            ),
-        }
-    elif model == "sd3":
-        from diffusers import StableDiffusion3Pipeline
-        guidance_scale = args.guidance_scale if args.guidance_scale is not None else 7.5
-        return {
-            "pipeline_class": StableDiffusion3Pipeline,
-            "model_id": "stabilityai/stable-diffusion-3-medium-diffusers",
-            "load_kwargs": {"torch_dtype": torch.float16},
-            "extra_setup": None,
-            "call_kwargs": lambda prompt: dict(
-                prompt=prompt, negative_prompt="", height=args.height, width=args.width,
-                num_inference_steps=args.num_inference_steps, guidance_scale=guidance_scale
-            ),
-        }
-    elif model == "sana1.5":
-        from diffusers import SanaPipeline  # run `pip install git+https://github.com/huggingface/diffusers` before use
-        guidance_scale = args.guidance_scale if args.guidance_scale is not None else 4.5
-        return {
-            "pipeline_class": SanaPipeline,
-            "model_id": "Efficient-Large-Model/SANA1.5_1.6B_1024px_diffusers",
-            "load_kwargs": {"torch_dtype": torch.bfloat16},
-            "extra_setup": lambda pipe: (pipe.vae.to(torch.bfloat16), pipe.text_encoder.to(torch.bfloat16)),
-            "call_kwargs": lambda prompt: dict(
-                prompt=prompt, height=args.height, width=args.width,
-                guidance_scale=guidance_scale, num_inference_steps=args.num_inference_steps
-            ),
-        }
-    else:
-        raise ValueError(f"Unknown model choice: {model!r}")
 
 def load_prompts(file_path):
     with open(file_path, "r") as f:
@@ -90,13 +49,12 @@ def check_image_exists(filepath):
 def main():
     args = parse_args()
     get_refined_prompt = load_refiner(args.mllm)
-    backend = load_backend(args.model, args)
-    prompts_by_tag = load_prompts(args.prompts_file)
 
-    pipe = backend["pipeline_class"].from_pretrained(backend["model_id"], **backend["load_kwargs"])
+    from diffusers import FluxPipeline
+    pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16)
     pipe = pipe.to("cuda")
-    if backend["extra_setup"] is not None:
-        backend["extra_setup"](pipe)
+
+    prompts_by_tag = load_prompts(args.prompts_file)
 
     restart_steps = [0] * args.refinement_iterations
 
@@ -119,7 +77,10 @@ def main():
             if check_image_exists(final_image_path):
                 print(f"Initial image already exists for prompt {line_number}. Skipping generation.")
             else:
-                image = pipe(**backend["call_kwargs"](prompt)).images[0]
+                image = pipe(
+                    prompt=prompt, height=args.height, width=args.width,
+                    num_inference_steps=args.num_inference_steps, guidance_scale=args.guidance_scale
+                ).images[0]
                 image.save(final_image_path)
                 print(f"Saved initial image: {final_image_path}")
 
@@ -159,7 +120,10 @@ def main():
                 if check_image_exists(refined_image_path):
                     print(f"Refined image for step {restart_step} already exists. Skipping generation.")
                 else:
-                    image = pipe(**backend["call_kwargs"](refined_prompt)).images[0]
+                    image = pipe(
+                        prompt=refined_prompt, height=args.height, width=args.width,
+                        num_inference_steps=args.num_inference_steps, guidance_scale=args.guidance_scale
+                    ).images[0]
                     image.save(refined_image_path)
                     print(f"Step {i+1}: Saved image for refined prompt: {refined_prompt}")
 
