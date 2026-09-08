@@ -270,4 +270,4 @@ We use a general template in `get_refined_prompt` (`src/qwen_integration.py` and
 
 ## Acknowledgement
 
-This work builds on [Stable Diffusion](https://arxiv.org/abs/2112.10752), [SDXL](https://arxiv.org/abs/2307.01952), [Stable Diffusion 3](https://arxiv.org/abs/2403.03206), [SANA 1.5](https://arxiv.org/abs/2501.18427), [Flux](https://github.com/black-forest-labs/flux), [DALL-E 3](https://cdn.openai.com/papers/dall-e-3.pdf), [Qwen2.5-VL](https://arxiv.org/abs/2502.13923), and GPT-4o. We thank their authors for making these models available and sharing their work with the community.
+This work builds on [Stable Diffusion](https://arxiv.org/abs/2112.10752), [SDXL](https://arxiv.org/abs/2307.01952), [Stable Diffusion 3](https://arxiv.org/abs/2403.03206), [SANA 1.5](https://arxiv.org/abs/2501.18427), [Flux](https://github.com/black-forest-labs/flux), [DALL-E 3](https://cdn.openai.com/papers/dall-e-3.pdf), [Qwen2.5-VL](https://arxiv.org/abs/2502.13923), and GPT-4o (OpenAI). We thank their authors for making these models available and sharing their work with the community.
