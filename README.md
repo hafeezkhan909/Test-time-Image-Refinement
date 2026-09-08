@@ -83,7 +83,7 @@ pip install git+https://github.com/huggingface/diffusers
 
 ## Running the pipeline
 
-You can call each script below directly, or use the provided `.sh` files in `scripts/{geneval,drawbench,t2i_benchmark}/`. Each one comes as a `config_*.sh` you edit and a runner that does the rest: build the prompts if they don't exist (note: we have already provided them in this repo), run TIR, then post-process (and for the T2I benchmark, run evals as well).
+You can call each script below directly, or use the provided `.sh` files in `scripts/{geneval,drawbench,t2i_benchmark}/`. Each one comes as a `config_*.sh` you edit and a respective script (stable_diffusion_1_2.sh, diffusers.sh, dalle.sh) that does the rest: build the prompts if they don't exist (note: we have already provided them in this repo), run TIR, then post-process (and for the T2I benchmark, run evals as well).
 
 ### `run_stable_diffusion_1_2.py` (SD 1.4 / 1.5 / 2.1)
 
