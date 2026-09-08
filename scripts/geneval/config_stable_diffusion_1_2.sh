@@ -15,5 +15,5 @@ REFINEMENT_STEP=99                                 # Denoising step at which the
 SELECTION_MODE="final_only"                        # Which image counts as "final" per prompt when post-processing: first_early_stop (ES1->ES2->ES3->last round) or final_only (always the last round)
 
 # Output locations
-OUTPUT_DIR="new_outputs/geneval_batch_results_SD"  # Where main.py writes raw per-prompt outputs
+OUTPUT_DIR="new_outputs/geneval_batch_results_SD"  # Where run_*.py writes raw per-prompt outputs
 GENEVAL_OUTPUT_DIR="gen_images"                    # Where post_process_geneval.py writes GenEval-ready output
