@@ -12,7 +12,7 @@ MLLM="qwen"                                        # qwen or gpt4o
 REFINEMENT_ITERATIONS=3
 SIZE="1024x1024"                                   # 1024x1024, 1792x1024, or 1024x1792
 QUALITY="standard"                                 # standard or hd
-SELECTION_MODE="first_early_stop"                  # first_early_stop or final_only
+SELECTION_MODE="final_only"                        # first_early_stop or final_only
 
 # Output locations
 OUTPUT_DIR="new_outputs/drawbench_batch_results_dalle"

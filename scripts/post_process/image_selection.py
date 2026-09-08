@@ -4,15 +4,15 @@ import os
 def get_final_image_path(prompt_dir, refinement_iterations=3, last_restart_step=0, selection_mode="first_early_stop"):
     """
     Determines which image file represents the final answer for a given prompt folder,
-    following main.py's output naming convention (final_{N}_refined_{restart_step}_.png
+    following run_*.py's output naming convention (final_{N}_refined_{restart_step}_.png
     for the last refinement round, ES{n}_final_image.png for early-stop markers).
 
     Args:
         prompt_dir (str): Path to the prompt's output folder (e.g. images_dir/tag/prompt_001).
-        refinement_iterations (int): Number of refinement rounds the pipeline ran (main.py's
+        refinement_iterations (int): Number of refinement rounds the pipeline ran (run_*.py's
             len(restart_steps)).
         last_restart_step (int): The restart step value used for the final round (the last
-            entry of main.py's --restart_steps).
+            entry of run_*.py's --restart_steps).
         selection_mode (str): "first_early_stop" checks ES1 -> ES2 -> ... -> ES{refinement_iterations}
             in order and returns the first one found, falling back to the final round's image if
             no ES marker exists. "final_only" always returns the final round's image, ignoring any

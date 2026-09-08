@@ -2,7 +2,7 @@
 # Runs run_dalle.py against the DrawBench prompts, then flattens the output
 # into a single folder of prompt_XXX.png images for scoring separately.
 #
-# Requires Azure OpenAI credentials set separately (not in this file):
+# Requires Azure OpenAI credentials set separately:
 #   export ENDPOINT_URL="https://<your-resource>.openai.azure.com/"
 #   export DALLE_MODEL="dalle3"
 #   export AOAI_JUDGE_MODEL="gpt-4o"   # only needed if MLLM=gpt4o below

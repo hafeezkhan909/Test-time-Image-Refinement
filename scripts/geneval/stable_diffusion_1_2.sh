@@ -3,8 +3,8 @@
 # then reorganizes the output into the folder structure GenEval expects.
 #
 # Note: GenEval itself is not bundled in this repo. Clone it separately
-# (https://github.com/djghosh13/geneval) and run its own evaluate_images.py
-# against $GENEVAL_OUTPUT_DIR once this script finishes.
+# (https://github.com/djghosh13/geneval) and run its own evaluation/evaluate_images.py
+# against $GENEVAL_OUTPUT_DIR once this script is done executing.
 
 set -e
 source scripts/geneval/config_stable_diffusion_1_2.sh
@@ -47,5 +47,3 @@ python scripts/post_process/post_process_geneval.py \
 
 echo ""
 echo "Done. GenEval-ready images are in $GENEVAL_OUTPUT_DIR."
-echo "To score them, clone GenEval separately (https://github.com/djghosh13/geneval)"
-echo "and run its evaluation/evaluate_images.py against $GENEVAL_OUTPUT_DIR."

@@ -11,7 +11,7 @@ IMAGE_PROMPT_MAPPING_FILE="image_prompt_mapping.json"
 MODEL="sdxl"                                       # sdxl, sd3, or sana1.5
 MLLM="qwen"                                        # qwen or gpt4o
 REFINEMENT_ITERATIONS=3
-SELECTION_MODE="first_early_stop"                  # first_early_stop or final_only
+SELECTION_MODE="final_only"                        # first_early_stop or final_only
 
 # Output locations
 OUTPUT_DIR="new_outputs/drawbench_batch_results_diffusers"

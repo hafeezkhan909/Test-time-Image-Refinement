@@ -11,8 +11,8 @@ METADATA_FILE="evaluation_metadata.jsonl"
 MODEL="sdxl"                                       # sdxl, sd3, or sana1.5
 MLLM="qwen"                                        # qwen or gpt4o
 REFINEMENT_ITERATIONS=3
-SELECTION_MODE="first_early_stop"                  # first_early_stop or final_only
+SELECTION_MODE="final_only"                        # first_early_stop or final_only
 
 # Output locations
-OUTPUT_DIR="new_outputs/batch_results_diffusers"
+OUTPUT_DIR="new_outputs/geneval_batch_results_diffusers"
 GENEVAL_OUTPUT_DIR="gen_images"

@@ -23,4 +23,4 @@ def save_detection_visualization(image, detected_objects, bounding_boxes, scores
     plt.savefig(save_path, bbox_inches="tight", dpi=300)
     plt.close()
 
-    print(f"✅ Image with detections saved at: {save_path}")
+    print(f"Image with detections saved at: {save_path}")

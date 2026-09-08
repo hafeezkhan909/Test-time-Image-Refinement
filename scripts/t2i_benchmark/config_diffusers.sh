@@ -11,7 +11,7 @@ QUERY_JSON_DIR="evaluation/json_files"
 MODEL="sdxl"                                       # sdxl, sd3, or sana1.5
 MLLM="qwen"                                        # qwen or gpt4o
 REFINEMENT_ITERATIONS=3
-SELECTION_MODE="first_early_stop"                  # first_early_stop or final_only
+SELECTION_MODE="final_only"                        # first_early_stop or final_only
 
 # Output locations
 OUTPUT_DIR="new_outputs/t2i_benchmark_results_diffusers"

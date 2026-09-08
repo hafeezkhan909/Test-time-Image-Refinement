@@ -2,7 +2,7 @@
 # Runs run_dalle.py against the GenEval benchmark prompts, then reorganizes
 # the output into the folder structure GenEval expects.
 #
-# Requires Azure OpenAI credentials set separately (not in this file):
+# Requires Azure OpenAI credentials set separately:
 #   export ENDPOINT_URL="https://<your-resource>.openai.azure.com/"
 #   export DALLE_MODEL="dalle3"
 #   export AOAI_JUDGE_MODEL="gpt-4o"   # only needed if MLLM=gpt4o below
