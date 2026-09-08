@@ -4,7 +4,9 @@
 
 Official implementation of *Test-time Prompt Refinement for Text-to-Image Models* [1], accepted to the ICCV 2025 Workshop on Multimodal Reasoning and Slow Thinking in Large Model Era (MARS2).
 
-![Method overview](assets/method.png)
+<p align="center">
+  <img src="assets/method.png" width="800">
+</p>
 
 ## What's in this repo
 
@@ -21,7 +23,7 @@ SD 1.4/1.5/2.1 additionally supports resuming from a partial (intermediate) late
 
 **MLLM judge/refiner**, selected per run with `--mllm`:
 - `qwen`, Qwen2.5-VL-7B-Instruct, run locally (default)
-- `gpt4o`, GPT-4o via Azure OpenAI
+- `gpt4o`, GPT-4o via Azure OpenAI, needs API access, see the `run_dalle.py` section below for the environment variables
 
 **Benchmarks**
 - [GenEval](https://arxiv.org/abs/2310.11513) [2], 553 prompts across 6 compositional tasks.
@@ -86,7 +88,7 @@ You can call each script below directly, or use the ready-made `.sh` files in `s
 | Arg | Default | Meaning |
 |---|---|---|
 | `--model_version` | `1.5` | `1.4`, `1.5`, or `2.1` |
-| `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag |
+| `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag. Default is the GenEval prompt set, extracted from `evaluation_metadata.jsonl` by `scripts/extract/extract_prompts.py` |
 | `--output_dir` | `test/test` | Where outputs are written |
 | `--restart_steps` | `0 0 0` | One entry per refinement round. `0` means restart from noise, a nonzero value (e.g. `75`) resumes from the latent saved at that step instead, for intermediate generation |
 | `--refinement_step` | `99` | Denoising step (of 100) at which the MLLM judges the image |
@@ -95,6 +97,8 @@ You can call each script below directly, or use the ready-made `.sh` files in `s
 | `--guidance_scale` | `7.5` | Classifier-free guidance scale |
 | `--height` / `--width` | `512` / `512` | Output resolution |
 | `--mllm` | `qwen` | `qwen` or `gpt4o` |
+
+Using `--mllm gpt4o` needs Azure OpenAI access, same setup as the `run_dalle.py` section below.
 
 ```bash
 python src/run_stable_diffusion_1_2.py \
@@ -109,13 +113,15 @@ Ready-to-run: `scripts/geneval/stable_diffusion_1_2.sh`, `scripts/drawbench/stab
 | Arg | Default | Meaning |
 |---|---|---|
 | `--model` | `sdxl` | `sdxl`, `sd3`, or `sana1.5` |
-| `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag |
+| `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag. Default is the GenEval prompt set, extracted from `evaluation_metadata.jsonl` by `scripts/extract/extract_prompts.py` |
 | `--output_dir` | `outputs` | Where outputs are written |
 | `--refinement_iterations` | `3` | Number of refinement rounds, always a full restart |
 | `--num_inference_steps` | `100` | Denoising steps |
 | `--guidance_scale` | - | Defaults to `7.5` for sdxl/sd3, `4.5` for sana1.5 |
 | `--height` / `--width` | `1024` / `1024` | Output resolution |
 | `--mllm` | `qwen` | `qwen` or `gpt4o` |
+
+Using `--mllm gpt4o` needs Azure OpenAI access, same setup as the `run_dalle.py` section below.
 
 ```bash
 python src/run_diffusers.py \
@@ -137,7 +143,7 @@ az login
 
 | Arg | Default | Meaning |
 |---|---|---|
-| `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag |
+| `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag. Default is the GenEval prompt set, extracted from `evaluation_metadata.jsonl` by `scripts/extract/extract_prompts.py` |
 | `--output_dir` | `dalle_outputs` | Where outputs are written |
 | `--refinement_iterations` | `3` | Number of refinement rounds |
 | `--size` | `1024x1024` | `1024x1024`, `1792x1024`, or `1024x1792` |
@@ -196,11 +202,11 @@ DECISION: "True" or "False"
 REFINED PROMPT: "<Your new prompt here>"
 ```
 
-You can add more in-context examples per category directly into this template. We found the model benefits from having more in-context examples, especially on the harder categories.
+Inside `get_refined_prompt`, this template is selected per tag (condition): one branch for `single_object`, one for `two_object`, and one shared branch for the remaining tags (`position`, `colors`, `counting`, `color_attr`, and a few internal tag variants). All three branches currently hold the same template text, but they are separate code paths, so you can edit any one of them on its own, for example to add in-context examples specific to spatial reasoning prompts, without changing how the other conditions are judged. We found the model benefits from having more in-context examples, especially on the harder categories.
 
 ## Benchmark results
 
-**LLM-Grounded Diffusion benchmark** [4]:
+**LLM-Grounded Diffusion benchmark [4], TIR improving SD-1.5, SD-2.1, Flux, and DALL-E 3 (MLLM: GPT-4o):**
 
 | Method | Negation | Numeracy | Attribute | Spatial | Average |
 |---|---|---|---|---|---|
@@ -213,7 +219,7 @@ You can add more in-context examples per category directly into this template. W
 | DALL-E 3 | 31.6 | 44.5 | 73.0 | 81.0 | 57.5 |
 | w/ TIR | 73.7 | 49.2 | 71.0 | 83.0 | 69.2 (+11.7) |
 
-**GenEval** [2]:
+**GenEval [2], TIR improving Flux and DALL-E 3 (MLLM: GPT-4o):**
 
 | Model | Position | Counting | Single Obj. | Two Object | Color Attr | Colors | Overall |
 |---|---|---|---|---|---|---|---|
@@ -222,16 +228,18 @@ You can add more in-context examples per category directly into this template. W
 | DALL-E 3 | 34.00 | 48.75 | 96.25 | 77.78 | 31.00 | 74.47 | 60.37 |
 | w/ TIR | 45.00 | 60.00 | 96.25 | 82.83 | 38.00 | 86.17 | 68.04 (+7.67) |
 
-**MLLM comparison on GenEval** [2]:
+**GenEval [2], TIR improving Flux (MLLM: Qwen2.5-VL-7B):**
 
 | Model | Position | Counting | Single Obj. | Two Object | Color Attr | Colors | Overall |
 |---|---|---|---|---|---|---|---|
 | Flux | 19.00 | 68.75 | 100.00 | 75.76 | 48.00 | 77.66 | 64.86 |
-| w/ TIR (Qwen2.5-VL-7B) | 29.00 | 67.50 | 98.75 | 86.87 | 44.00 | 81.91 | 68.01 (+3.15) |
+| w/ TIR | 29.00 | 67.50 | 98.75 | 86.87 | 44.00 | 81.91 | 68.01 (+3.15) |
 
 **DrawBench:**
 
-![DrawBench results](assets/drawbench_results.png)
+<p align="center">
+  <img src="assets/drawbench_results.png" width="800">
+</p>
 
 ## References
 
