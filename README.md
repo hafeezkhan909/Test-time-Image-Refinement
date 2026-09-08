@@ -1,7 +1,7 @@
 # Test-time Prompt Refinement for Text-to-Image Models
 
 <p align="center">
-  <a href="https://arxiv.org/pdf/2507.22076">Paper</a> | <a href="https://ma-hafeez-khan.com/tir-project-page/">Website</a> | <a href="https://drive.google.com/file/d/1yiMwFcTmHg_KBAETkAlD5Zte56V8TNLY/view?usp=sharing">ICCV 2025 Presentation</a>
+  <a href="https://arxiv.org/pdf/2507.22076" target="_blank" rel="noopener noreferrer">Paper</a> | <a href="https://ma-hafeez-khan.com/tir-project-page/" target="_blank" rel="noopener noreferrer">Website</a> | <a href="https://drive.google.com/file/d/1yiMwFcTmHg_KBAETkAlD5Zte56V8TNLY/view?usp=sharing" target="_blank" rel="noopener noreferrer">ICCV 2025 Presentation</a>
 </p>
 
 Official implementation of *Test-time Prompt Refinement for Text-to-Image Models* [1], accepted to the ICCV 2025 Workshop on Multimodal Reasoning and Slow Thinking in Large Model Era (MARS2).
