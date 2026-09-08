@@ -5,7 +5,7 @@
 Official implementation of *Test-time Prompt Refinement for Text-to-Image Models* [1], accepted to the ICCV 2025 Workshop on Multimodal Reasoning and Slow Thinking in Large Model Era (MARS2).
 
 <p align="center">
-  <img src="assets/method.png" width="800">
+  <img src="assets/method.png" width="500">
 </p>
 
 ## What's in this repo
@@ -238,7 +238,7 @@ Inside `get_refined_prompt`, this template is selected per tag (condition): one 
 **DrawBench:**
 
 <p align="center">
-  <img src="assets/drawbench_results.png" width="800">
+  <img src="assets/drawbench_results.png" width="500">
 </p>
 
 ## References
