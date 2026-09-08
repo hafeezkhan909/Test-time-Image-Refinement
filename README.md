@@ -1,6 +1,8 @@
 # Test-time Prompt Refinement for Text-to-Image Models
 
-[Paper](https://arxiv.org/abs/2507.22076) | [ICCV 2025 Presentation](https://openaccess.thecvf.com/content/ICCV2025W/MARS2/papers/Khan_Test-time_Prompt_Refinement_for_Text-to-Image_Models_ICCVW_2025_paper.pdf)
+<p align="center">
+  <a href="https://arxiv.org/pdf/2507.22076">Paper</a> | <a href="https://ma-hafeez-khan.com/tir-project-page/">Website</a> | <a href="https://drive.google.com/file/d/1yiMwFcTmHg_KBAETkAlD5Zte56V8TNLY/view?usp=sharing">ICCV 2025 Presentation</a>
+</p>
 
 Official implementation of *Test-time Prompt Refinement for Text-to-Image Models* [1], accepted to the ICCV 2025 Workshop on Multimodal Reasoning and Slow Thinking in Large Model Era (MARS2).
 
@@ -8,7 +10,7 @@ Official implementation of *Test-time Prompt Refinement for Text-to-Image Models
   <img src="assets/method.png" width="500">
 </p>
 
-## What's in this repo
+## 📦 What's in this Repo
 
 **T2I generation backbones**
 | Backbone | Versions | Entry point |
@@ -19,16 +21,18 @@ Official implementation of *Test-time Prompt Refinement for Text-to-Image Models
 | SANA | 1.5 | `src/run_diffusers.py --model sana1.5` |
 | DALL-E | 3 | `src/run_dalle.py` |
 
-SD 1.4/1.5/2.1 additionally supports resuming from a partial (intermediate) latent instead of always restarting from noise each round; the other backbones always do a full restart. SDXL, SD3, and SANA 1.5 support was added after the paper's publication.
+Stable Diffusion (SD) 1.4/1.5/2.1 additionally supports resuming from a partial (intermediate) latent instead of always restarting from noise each round; the other backbones always do a full restart. 
 
-**MLLM judge/refiner**, selected per run with `--mllm`:
+Note: SDXL, SD3, and SANA 1.5 support was added after the paper's publication.
+
+**MLLM judge/refiner**, selected using `--mllm` arg:
 - `qwen`, Qwen2.5-VL-7B-Instruct, run locally (default)
-- `gpt4o`, GPT-4o via Azure OpenAI, needs API access, see the `run_dalle.py` section below for the environment variables
+- `gpt4o`, GPT-4o via Azure OpenAI, needs API access, see the `run_dalle.py` section below for setting environment variables
 
 **Benchmarks**
 - [GenEval](https://arxiv.org/abs/2310.11513) [2], 553 prompts across 6 compositional tasks.
 - [DrawBench](https://arxiv.org/abs/2205.11487) [3], open-ended prompts from Imagen.
-- A custom benchmark built on the negation, counting, attribute-binding, and spatial-relationship prompt categories from LLM-grounded Diffusion [4] (`t2i_benchmark_dataset.json`, 300 prompts). Scoring for this benchmark (OWL-ViT based, `evaluation/`) is implemented in this repo, since no public evaluation code exists for it elsewhere. GenEval and DrawBench scoring themselves are external; this repo prepares images in each benchmark's expected format, and you run their own evaluators separately.
+- A custom benchmark built on the negation, counting, attribute-binding, and spatial-relationship prompt categories from LLM-grounded Diffusion [4] (`t2i_benchmark_dataset.json`, 300 prompts). Additioanlly, evaluation for this benchmark (OWL-ViT based, `evaluation/`) is implemented in this repo. Evaluation on GenEval and DrawBench are external. This repo prepares images in each benchmark's expected format, and you can setup and run the GenEval and Drawbench evaluators separately.
 
 ## Repository structure
 
@@ -55,11 +59,11 @@ scripts/
     image_selection.py          # shared logic: which image is "the" answer per prompt
   geneval/        # config_*.sh + stable_diffusion_1_2.sh / diffusers.sh / dalle.sh
   drawbench/      # same, for DrawBench
-  t2i_benchmark/  # same, for the custom benchmark (also runs scoring)
+  t2i_benchmark/  # same, for the custom benchmark (also runs evals)
 
 evaluation/
   test_negation.py, test_generative_numeracy.py,
-  test_spatial_relationships.py, test_object_detection.py   # scoring for the custom benchmark
+  test_spatial_relationships.py, test_object_detection.py   # evals for the custom benchmark [4]
   object_detection.py, image_utils.py, visualization.py, image_selection.py, config.py
 
 t2i_benchmark_dataset.json    # the custom benchmark's 300 prompts
@@ -69,8 +73,6 @@ evaluation_metadata.jsonl     # GenEval's 553 prompts
 ## Setup
 
 ```bash
-git clone https://github.com/hafeezkhan909/Test-time-Image-Refinement.git
-cd Test-time-Image-Refinement
 pip install -r requirements.txt
 ```
 
@@ -81,7 +83,7 @@ pip install git+https://github.com/huggingface/diffusers
 
 ## Running the pipeline
 
-You can call each script below directly, or use the ready-made `.sh` files in `scripts/{geneval,drawbench,t2i_benchmark}/`. Each one comes as a `config_*.sh` you edit and a runner that does the rest: build the prompts if they don't exist yet, run TIR, then post-process (and for the T2I benchmark, score it too).
+You can call each script below directly, or use the provided `.sh` files in `scripts/{geneval,drawbench,t2i_benchmark}/`. Each one comes as a `config_*.sh` you edit and a runner that does the rest: build the prompts if they don't exist (note: we have already provided them in this repo), run TIR, then post-process (and for the T2I benchmark, run evals as well).
 
 ### `run_stable_diffusion_1_2.py` (SD 1.4 / 1.5 / 2.1)
 
@@ -89,24 +91,27 @@ You can call each script below directly, or use the ready-made `.sh` files in `s
 |---|---|---|
 | `--model_version` | `1.5` | `1.4`, `1.5`, or `2.1` |
 | `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag. Default is the GenEval prompt set, extracted from `evaluation_metadata.jsonl` by `scripts/extract/extract_prompts.py` |
-| `--output_dir` | `test/test` | Where outputs are written |
-| `--restart_steps` | `0 0 0` | One entry per refinement round. `0` means restart from noise, a nonzero value (e.g. `75`) resumes from the latent saved at that step instead, for intermediate generation |
-| `--refinement_step` | `99` | Denoising step (of 100) at which the MLLM judges the image |
+| `--output_dir` | `new_outputs/geneval_batch_results_SD` | Where outputs are written |
+| `--restart_steps` | `0 0 0` | One entry per refinement round. `0` means restart from noise, a non-zero value (e.g. `25`) resumes from the latent saved at that step instead, for intermediate generation |
+| `--refinement_step` | `99` | Denoising step (of 100 (0-99)) at which the MLLM judges the image |
 | `--seed` | `42` | Generator seed |
 | `--num_inference_steps` | `100` | Denoising steps |
 | `--guidance_scale` | `7.5` | Classifier-free guidance scale |
 | `--height` / `--width` | `512` / `512` | Output resolution |
 | `--mllm` | `qwen` | `qwen` or `gpt4o` |
 
-Using `--mllm gpt4o` needs Azure OpenAI access, same setup as the `run_dalle.py` section below.
+Note: Using `--mllm gpt4o` needs Azure OpenAI access, same setup as the `run_dalle.py` section below.
+
+Example Usage: 
 
 ```bash
 python src/run_stable_diffusion_1_2.py \
   --model_version 1.5 --prompts_file filtered_prompts.json \
-  --output_dir new_outputs/batch_results --restart_steps 0 0 0 \
+  --output_dir new_outputs/geneval_batch_results_SD --restart_steps 0 0 0 \
   --refinement_step 99 --mllm qwen
 ```
-Ready-to-run: `scripts/geneval/stable_diffusion_1_2.sh`, `scripts/drawbench/stable_diffusion_1_2.sh`, `scripts/t2i_benchmark/stable_diffusion_1_2.sh`.
+
+Ready-to-run bash scripts for each benchmark: `scripts/geneval/stable_diffusion_1_2.sh`, `scripts/drawbench/stable_diffusion_1_2.sh`, `scripts/t2i_benchmark/stable_diffusion_1_2.sh`.
 
 ### `run_diffusers.py` (SDXL / SD3 / SANA 1.5)
 
@@ -114,14 +119,14 @@ Ready-to-run: `scripts/geneval/stable_diffusion_1_2.sh`, `scripts/drawbench/stab
 |---|---|---|
 | `--model` | `sdxl` | `sdxl`, `sd3`, or `sana1.5` |
 | `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag. Default is the GenEval prompt set, extracted from `evaluation_metadata.jsonl` by `scripts/extract/extract_prompts.py` |
-| `--output_dir` | `outputs` | Where outputs are written |
+| `--output_dir` | `new_outputs/geneval_batch_results_SD` | Where outputs are written |
 | `--refinement_iterations` | `3` | Number of refinement rounds, always a full restart |
 | `--num_inference_steps` | `100` | Denoising steps |
 | `--guidance_scale` | - | Defaults to `7.5` for sdxl/sd3, `4.5` for sana1.5 |
 | `--height` / `--width` | `1024` / `1024` | Output resolution |
 | `--mllm` | `qwen` | `qwen` or `gpt4o` |
 
-Using `--mllm gpt4o` needs Azure OpenAI access, same setup as the `run_dalle.py` section below.
+Example Usage: 
 
 ```bash
 python src/run_diffusers.py \
@@ -129,33 +134,35 @@ python src/run_diffusers.py \
   --output_dir new_outputs/batch_results_diffusers \
   --refinement_iterations 3 --mllm qwen
 ```
-Ready-to-run: `scripts/geneval/diffusers.sh`, `scripts/drawbench/diffusers.sh`, `scripts/t2i_benchmark/diffusers.sh`.
+Ready-to-run bash scripts for each benchmark: `scripts/geneval/diffusers.sh`, `scripts/drawbench/diffusers.sh`, `scripts/t2i_benchmark/diffusers.sh`.
 
 ### `run_dalle.py` (DALL-E 3)
 
-Needs Azure OpenAI credentials, set before running:
+Needs Azure OpenAI credentials, please set before running:
 ```bash
 export ENDPOINT_URL="https://<your-resource>.openai.azure.com/"
 export DALLE_MODEL="dalle3"          # your DALL-E 3 deployment name
-export AOAI_JUDGE_MODEL="gpt-4o"     # only needed if --mllm gpt4o
+export AOAI_JUDGE_MODEL="gpt-4o"     # needed when using --mllm gpt4o
 az login
 ```
 
 | Arg | Default | Meaning |
 |---|---|---|
 | `--prompts_file` | `filtered_prompts.json` | Prompts grouped by tag. Default is the GenEval prompt set, extracted from `evaluation_metadata.jsonl` by `scripts/extract/extract_prompts.py` |
-| `--output_dir` | `dalle_outputs` | Where outputs are written |
+| `--output_dir` | `new_outputs/geneval_batch_results_SD` | Where outputs are written |
 | `--refinement_iterations` | `3` | Number of refinement rounds |
 | `--size` | `1024x1024` | `1024x1024`, `1792x1024`, or `1024x1792` |
 | `--quality` | `standard` | `standard` or `hd` |
 | `--mllm` | `qwen` | `qwen` or `gpt4o` |
+
+Example Usage:
 
 ```bash
 python src/run_dalle.py \
   --prompts_file filtered_prompts.json --output_dir new_outputs/batch_results_dalle \
   --refinement_iterations 3 --size 1024x1024 --quality standard --mllm qwen
 ```
-Ready-to-run: `scripts/geneval/dalle.sh`, `scripts/drawbench/dalle.sh`, `scripts/t2i_benchmark/dalle.sh`.
+Ready-to-run bash scripts for each benchmark: `scripts/geneval/dalle.sh`, `scripts/drawbench/dalle.sh`, `scripts/t2i_benchmark/dalle.sh`.
 
 ## Prompt template
 
@@ -202,7 +209,7 @@ DECISION: "True" or "False"
 REFINED PROMPT: "<Your new prompt here>"
 ```
 
-Inside `get_refined_prompt`, this template is selected per tag (condition): one branch for `single_object`, one for `two_object`, and one shared branch for the remaining tags (`position`, `colors`, `counting`, `color_attr`, and a few internal tag variants). All three branches currently hold the same template text, but they are separate code paths, so you can edit any one of them on its own, for example to add in-context examples specific to spatial reasoning prompts, without changing how the other conditions are judged. We found the model benefits from having more in-context examples, especially on the harder categories.
+We use a general template in `get_refined_prompt` (`src/qwen_integration.py` and `src/aoai.py`), selected per tag: one branch for `single_object`, one for `two_object`, and one shared branch for the remaining tags (`position`, `colors`, `counting`, `color_attr`, and a few internal variants). Each branch can be edited on its own, for example to add in-context examples specific to a category. We found TIR benefits from in-context examples.
 
 ## Benchmark results
 
@@ -210,32 +217,32 @@ Inside `get_refined_prompt`, this template is selected per tag (condition): one 
 
 | Method | Negation | Numeracy | Attribute | Spatial | Average |
 |---|---|---|---|---|---|
-| SD-1.5 | 35.0 | 40.0 | 42.0 | 38.0 | 38.75 |
-| w/ TIR | 80.0 | 51.7 | 30.0 | 54.5 | 54.0 (+15.25) |
-| SD-2.1 | 45.0 | 50.6 | 18.0 | 44.5 | 39.5 |
-| w/ TIR | 85.0 | 56.0 | 18.0 | 43.0 | 50.5 (+11.0) |
-| Flux | 10.0 | 52.2 | 83.0 | 81.5 | 56.7 |
-| w/ TIR | 55.0 | 64.7 | 81.8 | 77.0 | 69.6 (+12.9) |
-| DALL-E 3 | 31.6 | 44.5 | 73.0 | 81.0 | 57.5 |
-| w/ TIR | 73.7 | 49.2 | 71.0 | 83.0 | 69.2 (+11.7) |
+| SD-1.5 | 35.0 | 40.0 | **42.0** | 38.0 | 38.75 |
+| w/ TIR | **80.0** | **51.7** | 30.0 | **54.5** | **54.0** *(+15.25)* |
+| SD-2.1 | 45.0 | 50.6 | 18.0 | **44.5** | 39.5 |
+| w/ TIR | **85.0** | **56.0** | **18.0** | 43.0 | **50.5** *(+11.0)* |
+| Flux | 10.0 | 52.2 | **83.0** | **81.5** | 56.7 |
+| w/ TIR | **55.0** | **64.7** | 81.8 | 77.0 | **69.6** *(+12.9)* |
+| DALL-E 3 | 31.6 | 44.5 | **73.0** | 81.0 | 57.5 |
+| w/ TIR | **73.7** | **49.2** | 71.0 | **83.0** | **69.2** *(+11.7)* |
 
 **GenEval [2], TIR improving Flux and DALL-E 3 (MLLM: GPT-4o):**
 
 | Model | Position | Counting | Single Obj. | Two Object | Color Attr | Colors | Overall |
 |---|---|---|---|---|---|---|---|
-| Flux | 19.00 | 68.75 | 100.00 | 75.76 | 48.00 | 77.66 | 64.86 |
-| w/ TIR | 49.00 | 71.25 | 98.75 | 80.81 | 47.00 | 80.85 | 71.27 (+6.41) |
-| DALL-E 3 | 34.00 | 48.75 | 96.25 | 77.78 | 31.00 | 74.47 | 60.37 |
-| w/ TIR | 45.00 | 60.00 | 96.25 | 82.83 | 38.00 | 86.17 | 68.04 (+7.67) |
+| Flux | 19.00 | 68.75 | **100.00** | 75.76 | **48.00** | 77.66 | 64.86 |
+| w/ TIR | **49.00** | **71.25** | 98.75 | **80.81** | 47.00 | **80.85** | **71.27** *(+6.41)* |
+| DALL-E 3 | 34.00 | 48.75 | **96.25** | 77.78 | 31.00 | 74.47 | 60.37 |
+| w/ TIR | **45.00** | **60.00** | 96.25 | **82.83** | **38.00** | **86.17** | **68.04** *(+7.67)* |
 
 **GenEval [2], TIR improving Flux (MLLM: Qwen2.5-VL-7B):**
 
 | Model | Position | Counting | Single Obj. | Two Object | Color Attr | Colors | Overall |
 |---|---|---|---|---|---|---|---|
-| Flux | 19.00 | 68.75 | 100.00 | 75.76 | 48.00 | 77.66 | 64.86 |
-| w/ TIR | 29.00 | 67.50 | 98.75 | 86.87 | 44.00 | 81.91 | 68.01 (+3.15) |
+| Flux | 19.00 | **68.75** | **100.00** | 75.76 | **48.00** | 77.66 | 64.86 |
+| w/ TIR | **29.00** | 67.50 | 98.75 | **86.87** | 44.00 | **81.91** | **68.01** *(+3.15)* |
 
-**DrawBench:**
+**DrawBench [3], TIR improving DALL-E 3 (MLLM: GPT-4o):**
 
 <p align="center">
   <img src="assets/drawbench_results.png" width="500">
