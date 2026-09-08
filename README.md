@@ -259,13 +259,12 @@ We use a general template in `get_refined_prompt` (`src/qwen_integration.py` and
 [4] Lian, L., Li, B., Yala, A., & Darrell, T. (2023). LLM-grounded Diffusion: Enhancing Prompt Understanding of Text-to-Image Diffusion Models with Large Language Models. *arXiv:2305.13655*.
 
 ```bibtex
-@InProceedings{Khan_2025_ICCV,
-    author    = {Khan, Mohammed Abdul Hafeez and Jain, Yash and Bhattacharyya, Siddhartha and Vineet, Vibhav},
-    title     = {Test-time Prompt Refinement for Text-to-Image Models},
-    booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) Workshops},
-    month     = {October},
-    year      = {2025},
-    pages     = {6506-6516}
+@inproceedings{khan2025test,
+  title={Test-time prompt refinement for text-to-image models},
+  author={Khan, Mohammed Abdul Hafeez and Jain, Yash and Bhattacharyya, Siddhartha and Vineet, Vibhav},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  pages={6565--6575},
+  year={2025}
 }
 ```
 
